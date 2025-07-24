@@ -17,6 +17,15 @@
     {% if tables %}
     <div class="result-box">
         <h2>Kết quả phân ca</h2>
+
+        <form method="get" style="margin-bottom: 20px;">
+            <input type="text" name="msnv" placeholder="MSNV" value="{{ request.args.get('msnv', '') }}">
+            <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
+            <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+            <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+            <input type="submit" value="Lọc dữ liệu">
+        </form>
+
         {{ tables[0]|safe }}
     </div>
     {% endif %}
