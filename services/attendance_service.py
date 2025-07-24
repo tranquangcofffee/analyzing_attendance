@@ -49,7 +49,7 @@ def process_attendance(df):
             # Phân loại ca
             if duration >= 22:
                 shift_type = 'Thông ca'
-            elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= 4:
+            elif 5 <= fci.hour <= 10 and lco.hour < 22 and duration >= 4:
                 shift_type = 'Ca sáng'
             elif 16 <= fci.hour <= 19 and duration >= 4:
                 if lco.date() > fci.date() or lco.hour < 8 and duration >= 11:

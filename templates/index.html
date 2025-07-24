@@ -26,8 +26,14 @@
             <input type="submit" value="Lọc dữ liệu">
         </form>
 
+        <!-- Nút download Excel -->
+        <form method="get" action="/download" style="margin-bottom: 20px;">
+            <input type="submit" value="📥 Tải kết quả Excel">
+        </form>
+
         {{ tables[0]|safe }}
     </div>
     {% endif %}
+
 </body>
 </html>
