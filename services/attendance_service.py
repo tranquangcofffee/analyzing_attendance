@@ -7,6 +7,16 @@ def parse_timestamp(ts):
     except:
         return None
 
+def check_morning_shift_with_missing_log(fci, log_count):
+    """
+    Kiểm tra nếu log duy nhất hoặc thiếu log thuộc ca sáng.
+    - Nếu log_count <= 1 và FCI (hoặc LCO) trong 5:00-10:00 hoặc LCO trước 22:00, trả về 'Ca sáng thiếu log'.
+    """
+    if log_count <= 1:
+        if 5 <= fci.hour <= 10 or fci.hour < 22:  # FCI trong 5:00-10:00 hoặc LCO trước 22:00
+            return 'Ca sáng thiếu log'
+    return None
+
 def process_attendance(df):
     df = df.rename(columns={df.columns[0]: "timestamp",
                             df.columns[2]: "id",
@@ -22,7 +32,7 @@ def process_attendance(df):
     df = df.sort_values(by=['id', 'datetime'])
 
     records = []
-    # Nhóm theo id và full_name, không nhóm theo date để xử lý ca liên tục
+    # Nhóm theo id và full_name để xử lý ca liên tục qua ngày
     grouped = df.groupby(['id', 'full_name'])
 
     for (emp_id, name), group in grouped:
@@ -33,27 +43,37 @@ def process_attendance(df):
             date = fci.date()
             lco = fci
             j = i + 1
+            shift_type = 'Không hợp lệ'
+            log_count = 1
 
             # Tìm LCO trong khoảng thời gian hợp lý (dưới 16 giờ)
             while j < len(group):
                 next_time = group.iloc[j]['datetime']
                 if (next_time - fci).total_seconds() / 3600 <= 16:
                     lco = next_time
+                    log_count += 1
                     j += 1
                 else:
                     break
 
             duration = (lco - fci).total_seconds() / 3600
-            shift_type = 'Không hợp lệ'
 
-            # Phân loại ca
-            if duration >= 22:
-                shift_type = 'Thông ca'
-            elif 5 <= fci.hour <= 10 and lco.hour < 22 and duration >= 4:
-                shift_type = 'Ca sáng'
-            elif 16 <= fci.hour <= 19 and duration >= 4:
-                if lco.date() > fci.date() or lco.hour < 8 and duration >= 11:
-                    shift_type = 'Ca đêm'
+            # Kiểm tra ca sáng thiếu log hoặc thiếu log thông thường
+            if log_count <= 1:
+                morning_shift = check_morning_shift_with_missing_log(fci, log_count)
+                if morning_shift:
+                    shift_type = morning_shift
+                else:
+                    shift_type = 'Thiếu log'
+            else:
+                # Phân loại ca
+                if duration >= 22:
+                    shift_type = 'Thông ca'
+                elif 5 <= fci.hour <= 10 and lco.hour < 22 and duration >= 4:
+                    shift_type = 'Ca sáng'
+                elif 16 <= fci.hour <= 19 and duration >= 4 and log_count >= 2:
+                    if lco.date() > fci.date() or lco.hour < 8 or duration >= 11:
+                        shift_type = 'Ca đêm'
 
             # Ghi lại record
             records.append({
