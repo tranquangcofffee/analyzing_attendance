@@ -46,10 +46,10 @@ def process_attendance(df):
             shift_type = 'Không hợp lệ'
             log_count = 1
 
-            # Tìm LCO trong khoảng thời gian hợp lý (dưới 16 giờ)
+            # Tìm LCO trong khoảng thời gian hợp lý (dưới 14 giờ)
             while j < len(group):
                 next_time = group.iloc[j]['datetime']
-                if (next_time - fci).total_seconds() / 3600 <= 16:
+                if (next_time - fci).total_seconds() / 3600 <= 14:
                     lco = next_time
                     log_count += 1
                     j += 1
