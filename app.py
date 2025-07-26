@@ -82,7 +82,10 @@ def index():
         
         total_duration = None
         if msnv:
-            total_duration = df['Thời lượng (h)'].sum()
+            total_seconds = int(df['Thời lượng (h)'].sum() * 3600)  # Chuyển đổi giờ sang giây
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            total_duration = f"{hours} giờ {minutes} phút"
 
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
