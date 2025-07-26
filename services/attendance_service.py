@@ -73,8 +73,9 @@ def process_attendance(df):
         group_by_date = group.groupby('date')
 
         processed_indices = set()
+        i = 0 
 
-        i = 0
+        # Bắt FCI hiện tại
         while i < len(group):
             row = group.iloc[i]
             if row['key'] != 'Vào':
@@ -96,6 +97,10 @@ def process_attendance(df):
                 next_row = group.iloc[j]
                 time_diff = (next_row['datetime'] - fci).total_seconds() / 3600
 
+                # Dựa trên FCI đầu tiên bắt được để xét các log tiếp theo
+                # Nếu là log "Ra" và thời gian cách nhau <= 30 phút thì coi là LCO và tiến hành ghép
+
+                # Nếu có từ 2 log "Vào" thì render ra cả 2
                 if next_row['key'] == 'Ra' and time_diff <= 30:
                     lco = next_row['datetime']
                     lco_status = next_row['key']
@@ -121,7 +126,7 @@ def process_attendance(df):
                         shift_type = 'Ca đêm'
 
             prev_day = date_report - timedelta(days=1)
-            prev_log_info = "None"
+            prev_log_info = "Không có"
 
             if shift_type in ['Thiếu log', 'Ca sáng thiếu log']:
                 if prev_day in group_by_date.groups:
