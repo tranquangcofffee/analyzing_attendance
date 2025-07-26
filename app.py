@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 from services.attendance_service import process_attendance
 from services.excel_service import save_excel, get_excel_path
+from io import BytesIO
 
 app = Flask(__name__)
 df_result = pd.DataFrame()
@@ -59,6 +60,9 @@ def index():
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
+        shift_type = request.args.get('shift_type', '')
+        if shift_type:
+            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         if msnv:
             df = df[df['ID'].astype(str).str.contains(msnv)]
@@ -68,6 +72,9 @@ def index():
             df = df[df['Ngày'] >= pd.to_datetime(start_date).date()]
         if end_date:
             df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
+        shift_type = request.args.get('shift_type', '')
+        if shift_type:
+            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         result = df
 
@@ -76,13 +83,26 @@ def index():
                            titles=result.columns.values if result is not None else None)
 
 
-@app.route('/download')
+@app.route('/download', methods=['POST'])
 def download_excel():
-    path = get_excel_path()
-    if os.path.exists(path):
-        return send_file(path, as_attachment=True)
-    else:
-        return "Không tìm thấy file kết quả.", 404
+    visible_cols_str = request.form.get('visible_columns', '')
+    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
+
+    df = cache.get('attendance_data')
+    if df is None:
+        return "Không có dữ liệu để tải.", 400
+
+    # Lấy đúng thứ tự cột như hiển thị HTML
+    full_columns = df.columns.tolist()
+    selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
+
+    df_filtered = df[selected_columns]
+
+    output = BytesIO()
+    df_filtered.to_excel(output, index=False)
+    output.seek(0)
+
+    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
 
 
 if __name__ == '__main__':
