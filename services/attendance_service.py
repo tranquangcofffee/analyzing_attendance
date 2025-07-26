@@ -14,6 +14,14 @@ def natural_sort_key(val):
     parts = re.split(r'(\d+)', str(val))
     return [int(part) if part.isdigit() else part.lower() for part in parts]
 
+def format_duration(hours):
+    if pd.isna(hours):
+        return ""
+    total_minutes = int(hours * 60)
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h} giờ {m} phút" if total_minutes > 0 else "0 phút"
+
 def check_morning_shift_with_missing_log(fci, log_count):
     if log_count <= 1:
         if 5 <= fci.hour <= 10 or fci.hour < 22:

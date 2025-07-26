@@ -52,6 +52,7 @@ def index():
 
     # Lọc dữ liệu từ cache nếu có
     cached_df = cache.get('attendance_data')
+
     if cached_df is not None:
         df = cached_df.copy()
 
@@ -78,6 +79,7 @@ def index():
 
         result = df
         # Tính tổng thời lượng nếu lọc theo ID
+        
         total_duration = None
         if msnv:
             total_duration = df['Thời lượng (h)'].sum()
