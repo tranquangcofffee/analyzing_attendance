@@ -59,6 +59,9 @@ def index():
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
+        shift_type = request.args.get('shift_type', '')
+        if shift_type:
+            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         if msnv:
             df = df[df['ID'].astype(str).str.contains(msnv)]
@@ -68,6 +71,9 @@ def index():
             df = df[df['Ngày'] >= pd.to_datetime(start_date).date()]
         if end_date:
             df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
+        shift_type = request.args.get('shift_type', '')
+        if shift_type:
+            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         result = df
 
