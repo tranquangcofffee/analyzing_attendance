@@ -10,7 +10,7 @@
     <h1>📋 Kiểm tra công theo ca</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".xlsx" required>
+        <input type="file" name="file" accept=".csv" required>
         <input type="submit" value="Tải lên và xử lý">
     </form>
 
@@ -23,6 +23,15 @@
             <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
             <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
             <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                    <select name="shift_type">
+                        <option value="">-- Tất cả ca --</option>
+                        <option value="Ca sáng" {% if request.args.get('shift_type') == 'Ca sáng' %}selected{% endif %}>Ca sáng</option>
+                        <option value="Ca đêm" {% if request.args.get('shift_type') == 'Ca đêm' %}selected{% endif %}>Ca đêm</option>
+                        <option value="Thông ca" {% if request.args.get('shift_type') == 'Thông ca' %}selected{% endif %}>Thông ca</option>
+                        <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
+                        <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
+                        <option value="Ca sáng thiếu log" {% if request.args.get('shift_type') == 'Ca sáng thiếu log' %}selected{% endif %}>Ca sáng thiếu log</option>
+                    </select>
             <input type="submit" value="Lọc dữ liệu">
         </form>
 
