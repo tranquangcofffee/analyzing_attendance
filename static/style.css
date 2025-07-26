@@ -77,3 +77,30 @@ label {
     font-size: 14px;
     cursor: pointer;
 }
+
+.dataframe-container {
+    max-height: 1000px;  /* Chiều cao bảng hiển thị */
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    position: relative;
+}
+
+.dataframe {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.dataframe th, .dataframe td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+/* Cố định hàng đầu */
+.dataframe th {
+    position: sticky;
+    top: 0;
+    background-color: #f9f9f9;
+    z-index: 2;
+    font-weight: bold;
+}

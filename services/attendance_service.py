@@ -117,7 +117,7 @@ def process_attendance(df):
                 morning_shift = check_morning_shift_with_missing_log(fci, log_count)
                 shift_type = morning_shift if morning_shift else 'Thiếu log'
             else:
-                if duration >= 22:
+                if duration >= 17:
                     shift_type = 'Thông ca'
                 elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
                     shift_type = 'Ca sáng'

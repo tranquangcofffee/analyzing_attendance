@@ -56,7 +56,9 @@
             <label><input type="checkbox" class="toggle-col" data-col="10" checked> Log hôm trước</label>
         </div>
 
-        {{ tables[0]|safe }}
+        <div class="dataframe-container">
+            {{ tables[0]|safe }}
+        </div>
     </div>
     {% endif %}
 
