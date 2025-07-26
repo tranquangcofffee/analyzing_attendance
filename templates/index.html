@@ -36,9 +36,11 @@
         </form>
 
         <!-- Nút download Excel -->
-        <form method="get" action="/download" style="margin-bottom: 20px;">
+        <form method="post" action="/download" id="download-form" style="margin-bottom: 20px;">
+            <input type="hidden" name="visible_columns" id="visible-columns">
             <input type="submit" value="📥 Tải kết quả Excel">
         </form>
+
 
         <div style="max-height: 200px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
             <label><input type="checkbox" class="toggle-col" data-col="0" checked> Số dòng</label>

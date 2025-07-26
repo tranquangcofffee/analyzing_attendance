@@ -11,3 +11,13 @@ document.querySelectorAll('.toggle-col').forEach(function (checkbox) {
         });
     });
 });
+
+document.getElementById('download-form').addEventListener('submit', function (e) {
+    const visibleCols = [];
+    document.querySelectorAll('.toggle-col').forEach((checkbox, index) => {
+        if (checkbox.checked) {
+            visibleCols.push(index);
+        }
+    });
+    document.getElementById('visible-columns').value = visibleCols.join(',');
+});
