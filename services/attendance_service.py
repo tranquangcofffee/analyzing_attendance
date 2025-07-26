@@ -15,10 +15,44 @@ def check_morning_shift_with_missing_log(fci, log_count):
             return 'Ca sáng thiếu log'
     return None
 
+def handle_single_logs(group, processed_indices, emp_id, name, records):
+    for idx, row in group.iterrows():
+        if idx in processed_indices:
+            continue
+
+        log_date = row['datetime'].date()
+        if row['key'] == 'Vào':
+            records.append({
+                'ID': emp_id,
+                'Họ tên': name,
+                'Ngày': log_date,
+                'FCI': row['datetime'].strftime('%d/%m - %H:%M:%S'),
+                'FCI trạng thái': 'Vào',
+                'LCO': 'Không có',
+                'LCO trạng thái': 'Không có',
+                'Thời lượng (h)': 0,
+                'Loại ca': 'Thiếu LCO',
+                'Log hôm trước': 'None'
+            })
+
+        elif row['key'] == 'Ra':
+            records.append({
+                'ID': emp_id,
+                'Họ tên': name,
+                'Ngày': log_date,
+                'FCI': 'Không có',
+                'FCI trạng thái': 'Không có',
+                'LCO': row['datetime'].strftime('%d/%m - %H:%M:%S'),
+                'LCO trạng thái': 'Ra',
+                'Thời lượng (h)': 0,
+                'Loại ca': 'Thiếu FCI',
+                'Log hôm trước': 'None'
+            })
+
 def process_attendance(df):
     df = df.rename(columns={
         df.columns[0]: "timestamp",
-        df.columns[1]: "unused",  # bỏ qua
+        df.columns[1]: "unused",
         df.columns[2]: "id",
         df.columns[3]: "first_name",
         df.columns[4]: "last_name",
@@ -35,7 +69,10 @@ def process_attendance(df):
 
     for (emp_id, name), group in grouped:
         group = group.sort_values(by='datetime').reset_index(drop=True)
-        group['date'] = group['datetime'].dt.date  # thêm để tra log hôm trước
+        group['date'] = group['datetime'].dt.date
+        group_by_date = group.groupby('date')
+
+        processed_indices = set()
 
         i = 0
         while i < len(group):
@@ -52,23 +89,25 @@ def process_attendance(df):
             log_count = 1
             found_lco = False
 
+            processed_indices.add(i)
+
             j = i + 1
             while j < len(group):
                 next_row = group.iloc[j]
                 time_diff = (next_row['datetime'] - fci).total_seconds() / 3600
 
-                if next_row['key'] == 'Ra' and time_diff <= 30:  # ca thông ca có thể dài
+                if next_row['key'] == 'Ra' and time_diff <= 30:
                     lco = next_row['datetime']
                     lco_status = next_row['key']
                     log_count += 1
                     found_lco = True
+                    processed_indices.add(j)
                     break
                 j += 1
 
             duration = (lco - fci).total_seconds() / 3600
             date_report = fci.date()
 
-            # Phân loại ca
             if log_count <= 1:
                 morning_shift = check_morning_shift_with_missing_log(fci, log_count)
                 shift_type = morning_shift if morning_shift else 'Thiếu log'
@@ -81,10 +120,8 @@ def process_attendance(df):
                     if lco.date() > fci.date() or lco.hour <= 8:
                         shift_type = 'Ca đêm'
 
-            # Tìm log hôm trước nếu thiếu log
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "None"
-            group_by_date = group.groupby('date')
 
             if shift_type in ['Thiếu log', 'Ca sáng thiếu log']:
                 if prev_day in group_by_date.groups:
@@ -109,5 +146,8 @@ def process_attendance(df):
             })
 
             i = j if found_lco else i + 1
+
+        # Ghi lại các log đơn lẻ chưa xử lý
+        handle_single_logs(group, processed_indices, emp_id, name, records)
 
     return pd.DataFrame(records)
