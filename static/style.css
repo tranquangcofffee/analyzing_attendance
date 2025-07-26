@@ -91,6 +91,12 @@ label {
     position: relative;
 }
 
+table.data {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: auto;
+}
+
 /* Scrollable container for checkboxes */
 .result-box div {
     max-height: 250px;
@@ -99,4 +105,22 @@ label {
     border: 1px solid #ddd;
     border-radius: 5px;
     background-color: #f9f9f9;
+}
+
+.dataframe-container thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f2f2f2;
+    z-index: 2;
+    padding: 8px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    height: 40px;
+}
+
+.dataframe-container td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    height: 40px;
+    box-sizing: border-box;
 }
