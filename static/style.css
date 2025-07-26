@@ -27,9 +27,9 @@ input[type=file] {
 }
 
 input[type=submit] {
-    padding: 12px 24px;
+    padding: 14px 28px;
     margin-left: 10px;
-    background-color: #4CAF50;
+    background-color: #007bff;
     color: white;
     border: none;
     border-radius: 8px;
@@ -38,7 +38,7 @@ input[type=submit] {
 }
 
 input[type=submit]:hover {
-    background-color: #45a049;
+    background-color: #0056b3;
     transform: scale(1.05);
 }
 
@@ -46,6 +46,7 @@ input[type=submit]:hover {
     border-collapse: collapse;
     width: 100%;
     background: white;
+    margin-top: 20px;
 }
 
 .dataframe th, .dataframe td {
@@ -57,10 +58,15 @@ input[type=submit]:hover {
 .dataframe th {
     background-color: #f2f2f2;
     color: #2c3e50;
+    font-weight: bold;
+}
+
+.dataframe tr:nth-child(even) {
+    background-color: #f9f9f9;
 }
 
 .dataframe tr:hover {
-    background-color: #f9f9f9;
+    background-color: #e3f2fd;
 }
 
 .result-box {
@@ -85,22 +91,12 @@ label {
     position: relative;
 }
 
-.dataframe {
-    border-collapse: collapse;
-    width: 100%;
-}
-
-.dataframe th, .dataframe td {
+/* Scrollable container for checkboxes */
+.result-box div {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px;
     border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-}
-
-/* Cố định hàng đầu */
-.dataframe th {
-    position: sticky;
-    top: 0;
+    border-radius: 5px;
     background-color: #f9f9f9;
-    z-index: 2;
-    font-weight: bold;
 }

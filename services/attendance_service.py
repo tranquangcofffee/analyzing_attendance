@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import pandas as pd
+import re
 
 TIME_FLAG = 1
 
@@ -8,6 +9,10 @@ def parse_timestamp(ts):
         return datetime.strptime(str(ts), "%Y%m%d%H%M%S")
     except:
         return None
+
+def natural_sort_key(val):
+    parts = re.split(r'(\d+)', str(val))
+    return [int(part) if part.isdigit() else part.lower() for part in parts]
 
 def check_morning_shift_with_missing_log(fci, log_count):
     if log_count <= 1:
@@ -155,4 +160,8 @@ def process_attendance(df):
         # Ghi lại các log đơn lẻ chưa xử lý
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
-    return pd.DataFrame(records)
+    df_result = pd.DataFrame(records)
+    df_result['Ghi chú'] = ""  # Thêm cột ghi chú trống
+    df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
+
+    return df_result

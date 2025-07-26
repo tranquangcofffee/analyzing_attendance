@@ -57,8 +57,30 @@
         </div>
 
         <div class="dataframe-container">
-            {{ tables[0]|safe }}
+            <table class="dataframe">
+                <thead>
+                    <tr>
+                        {% for col in titles %}
+                            <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for _, row in result.iterrows() %}
+                        <tr>
+                            {% for col in titles %}
+                                <td {% if col == "Ghi chú" %}contenteditable="true"{% endif %}>{{ row[col] }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% if total_duration %}
+            <div style="margin-top: 10px; font-weight: bold;">
+                Tổng thời lượng làm việc của nhân sự: {{ total_duration }} giờ
+            </div>
+        {% endif %}
     </div>
     {% endif %}
 

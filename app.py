@@ -65,7 +65,7 @@ def index():
             df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         if msnv:
-            df = df[df['ID'].astype(str).str.contains(msnv)]
+            df = df[df['ID'].astype(str) == msnv]
         if name:
             df = df[df['Họ tên'].str.lower().str.contains(name)]
         if start_date:
@@ -77,10 +77,17 @@ def index():
             df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
         result = df
+        # Tính tổng thời lượng nếu lọc theo ID
+        total_duration = None
+        if msnv:
+            total_duration = df['Thời lượng (h)'].sum()
 
     return render_template('index.html',
-                           tables=[result.to_html(classes='data')] if result is not None else None,
-                           titles=result.columns.values if result is not None else None)
+        tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
+        titles=result.columns.values if result is not None else None,
+        result=result if result is not None else pd.DataFrame(),  # để dùng trong template
+        total_duration=total_duration if result is not None else None
+    )
 
 
 @app.route('/download', methods=['POST'])
