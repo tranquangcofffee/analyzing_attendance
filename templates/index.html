@@ -7,6 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
+    </div>
     <h1>📋 Kiểm tra công theo ca</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
