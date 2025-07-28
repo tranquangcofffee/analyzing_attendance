@@ -76,7 +76,7 @@ def index():
         shift_type = request.args.get('shift_type', '')
 
         if shift_type:
-            df = df[df['Loại ca'] == shift_type]
+            df = df[df['Loại Ca'] == shift_type]
         if msnv:
             df = df[df['ID'].astype(str) == msnv]
         if name:
@@ -159,7 +159,7 @@ def download_filtered_excel():
     df_final.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
+    return send_file(output, download_name=employee_id + '.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

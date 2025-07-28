@@ -63,7 +63,7 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
             })
 
 def apply_policy_adjustments(df_result, policy_df):
-    """Áp dụng điều chỉnh chính sách từ file chính sách."""
+    """Áp dụng điều chỉnh chính sách từ file chính sách, lưu vào TimeIn/TimeOut."""
     # Đảm bảo tên cột đúng
     expected_columns = ['ID', 'start_day', 'start_night', 'end_day', 'end_night', 'late_tol', 'early_tol']
     if not all(col in policy_df.columns for col in expected_columns):
@@ -96,8 +96,8 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         policy = policy_map[emp_id]
-        shift_type = row.get('Loại ca', '')
-        date_ref = row.get('Ngày')
+        shift_type = row.get('Loại Ca', '')
+        date_ref = row.get('Ngày chấm công')
 
         # Kiểm tra và chuyển đổi date_ref
         try:
@@ -111,7 +111,7 @@ def apply_policy_adjustments(df_result, policy_df):
                 df_result.at[idx, 'Ghi chú'] = f"Ngày tham chiếu không hợp lệ: {type(date_ref)}"
                 continue
         except Exception as e:
-            df_result.at[idx, 'Ghi chú'] = f"Lỗi chuyển đổi ngày: {str(e)}"
+            df_result.at[idx, 'Ghi chú'] = f"Lỗi chuyển đổi ngày vì thiếu checkin/checkout"
             continue
 
         # Bỏ qua nếu là Thông ca
@@ -136,19 +136,35 @@ def apply_policy_adjustments(df_result, policy_df):
             df_result.at[idx, 'Ghi chú'] = f"Thời gian chính sách không hợp lệ cho ID {emp_id}: start={policy.get('start_day')}, end={policy.get('end_day')}"
             continue
 
-        # Ghi đè FCI/LCO và fci/lco với thời gian từ chính sách
-        # df_result.at[idx, 'fci'] = shift_start
-        # df_result.at[idx, 'lco'] = shift_end
-
-        # Set lại thời gian lấy từ policy là TimeIn, TimeOut
+        # Ghi thời gian chính sách vào TimeIn và TimeOut
         df_result.at[idx, 'Giờ vào'] = shift_start.strftime('%d/%m - %H:%M:%S')
         df_result.at[idx, 'Giờ ra'] = shift_end.strftime('%d/%m - %H:%M:%S')
 
-        # Tính toán và ghi đè thời lượng ca
-        shift_duration = (shift_end - shift_start).total_seconds() / 3600
-        df_result.at[idx, 'Thời lượng (h)'] = round(shift_duration, 2)
-        df_result.at[idx, 'Thời lượng'] = format_duration(shift_duration)
-        df_result.at[idx, 'Ghi chú'] = "Đã áp dụng thời gian chính sách"
+        # Tính duration_2 từ chính sách
+        duration_2 = (shift_end - shift_start).total_seconds() / 3600 if shift_start and shift_end else 0
+
+        # Lấy duration_1 từ LastCheckOut - FirstCheckIn (nếu có)
+        fci_str = row.get('FirstCheckIn')
+        lco_str = row.get('LastCheckOut')
+        duration_1 = row.get('Thời lượng (h)', 0)
+        if fci_str != 'Không có' and lco_str != 'Không có':
+            try:
+                fci = pd.to_datetime(fci_str, format='%d/%m - %H:%M:%S')
+                lco = pd.to_datetime(lco_str, format='%d/%m - %H:%M:%S')
+                duration_1 = (lco - fci).total_seconds() / 3600
+            except:
+                duration_1 = 0
+
+        # Chọn thời lượng hợp lý
+        if duration_1 > duration_2:
+            final_duration = duration_2
+            df_result.at[idx, 'Ghi chú'] = "Dùng thời lượng chính sách (Giờ ra - Giờ vào)"
+        else:
+            final_duration = duration_1
+            df_result.at[idx, 'Ghi chú'] = "Dùng thời lượng thực tế (LastCheckOut - FirstCheckIn)"
+
+        df_result.at[idx, 'Thời lượng (h)'] = round(final_duration, 2)
+        df_result.at[idx, 'Thời lượng'] = format_duration(final_duration)
 
     return df_result
 
@@ -178,7 +194,7 @@ def process_attendance(df, policy_df=None):
     TIME_FLAG = 4  # Số giờ tối thiểu cho ca hợp lệ
 
     for (emp_id, name), group in grouped:
-        group = group.sort_values(by='datetime').reset_index(drop=True)
+        group = group.sort_values(by='datetime').reset_index()
         group['date'] = group['datetime'].dt.date
         group_by_date = group.groupby('date')
 
@@ -243,18 +259,18 @@ def process_attendance(df, policy_df=None):
                     prev_log_info = "; ".join(prev_entries)
 
             records.append({
-                'ID': str(emp_id),  # Đảm bảo ID là chuỗi
+                'ID': str(emp_id),
                 'Họ tên': name,
-                'Ngày': pd.Timestamp(date_report),  # Chuyển thành pd.Timestamp
-                'fci': fci.strftime('%d/%m - %H:%M:%S'),
-                'FCI trạng thái': fci_status,
-                'lco': lco.strftime('%d/%m - %H:%M:%S'),
-                'LCO trạng thái': lco_status,
-                'Giờ vào': fci,
-                'Giờ ra': lco,
+                'Ngày chấm công': date_report.strftime('%Y-%m-%d'),
+                'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
+                'FCIStatus': fci_status,
+                'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
+                'LCOStatus': lco_status,
+                'Giờ vào': fci.strftime('%d/%m - %H:%M:%S'),
+                'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
                 'Thời lượng (h)': round(duration, 2),
                 'Thời lượng': format_duration(duration),
-                'Loại ca': shift_type,
+                'Loại Ca': shift_type,
                 'Log hôm trước': prev_log_info
             })
 
@@ -264,6 +280,11 @@ def process_attendance(df, policy_df=None):
 
     df_result = pd.DataFrame(records)
     df_result['Ghi chú'] = ""
+    df_result = df_result[[
+        'ID', 'Họ tên', 'Ngày chấm công', 'Giờ vào', 'Giờ ra', 'FirstCheckIn', 'FCIStatus',
+        'LastCheckOut', 'LCOStatus', 'Thời lượng (h)', 'Thời lượng', 'Loại Ca',
+        'Log hôm trước', 'Ghi chú'
+    ]]
     df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
 
     # Áp dụng điều chỉnh chính sách nếu có policy_df
