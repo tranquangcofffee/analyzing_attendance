@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import pandas as pd
+import re
 
 TIME_FLAG = 1
 
@@ -8,6 +9,18 @@ def parse_timestamp(ts):
         return datetime.strptime(str(ts), "%Y%m%d%H%M%S")
     except:
         return None
+
+def natural_sort_key(val):
+    parts = re.split(r'(\d+)', str(val))
+    return [int(part) if part.isdigit() else part.lower() for part in parts]
+
+def format_duration(hours):
+    if pd.isna(hours):
+        return ""
+    total_minutes = int(hours * 60)
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h} giờ {m} phút" if total_minutes > 0 else "0 phút"
 
 def check_morning_shift_with_missing_log(fci, log_count):
     if log_count <= 1:
@@ -117,7 +130,7 @@ def process_attendance(df):
                 morning_shift = check_morning_shift_with_missing_log(fci, log_count)
                 shift_type = morning_shift if morning_shift else 'Thiếu log'
             else:
-                if duration >= 22:
+                if duration >= 17:
                     shift_type = 'Thông ca'
                 elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
                     shift_type = 'Ca sáng'
@@ -155,4 +168,8 @@ def process_attendance(df):
         # Ghi lại các log đơn lẻ chưa xử lý
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
-    return pd.DataFrame(records)
+    df_result = pd.DataFrame(records)
+    df_result['Ghi chú'] = ""  # Thêm cột ghi chú trống
+    df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
+
+    return df_result
