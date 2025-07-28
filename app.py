@@ -149,11 +149,24 @@ def download_filtered_excel():
     # Tạo cột "Thời lượng" đẹp (giờ - phút)
     df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
 
-    # Nếu có chỉ định cột nào hiển thị thì chỉ export đúng cột đó
+    # Lấy đúng thứ tự cột như hiển thị HTML
     full_columns = df_filtered.columns.tolist()
     selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
-
     df_final = df_filtered[selected_columns] if selected_columns else df_filtered
+
+    total_duration = None
+    if employee_id:
+        total_seconds = int(df_filtered['Thời lượng (h)'].sum() * 3600)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        total_duration = f"{hours} giờ {minutes} phút"
+
+    # Thêm dòng tổng thời lượng nếu có
+    if total_duration and employee_id:
+        # Tạo DataFrame cho dòng tổng
+        total_row = pd.DataFrame([['Tổng thời lượng', total_duration] if 'Thời lượng' in df_final.columns else ['Tổng', total_duration]], 
+                                columns=[df_final.columns[0], df_final.columns[-1]])
+        df_final = pd.concat([df_final, total_row], ignore_index=True)
 
     output = BytesIO()
     df_final.to_excel(output, index=False)
