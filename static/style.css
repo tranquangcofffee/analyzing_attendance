@@ -125,3 +125,36 @@ table.data {
     height: 40px;
     box-sizing: border-box;
 }
+
+button.download-shift-id,
+.button-container form input[type=submit] {
+    background: linear-gradient(45deg, #ff7e5f, #feb47b); /* Gradient orange */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    height: 40px; /* Ensure consistent height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+}
+
+button.download-shift-id:hover,
+.button-container form input[type=submit]:hover {
+    transform: scale(1.05);
+    background: linear-gradient(45deg, #ff6a4d, #fd9a6e); /* Darker gradient on hover */
+}
+
+.button-container {
+    display: flex;
+    gap: 10px; /* Add spacing between buttons */
+    align-items: center; /* Ensure buttons are vertically aligned */
+    justify-content: center; /* Center buttons horizontally */
+}
+
+.button-container form {
+    display: flex;
+    align-items: center; /* Align buttons within forms */
+}

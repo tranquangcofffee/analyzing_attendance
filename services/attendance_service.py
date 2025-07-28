@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import re
 
-TIME_FLAG = 1
+TIME_FLAG = 4
 
 def parse_timestamp(ts):
     try:
@@ -159,6 +159,7 @@ def process_attendance(df):
                 'LCO': lco.strftime('%d/%m - %H:%M:%S'),
                 'LCO trạng thái': lco_status,
                 'Thời lượng (h)': round(duration, 2),
+                'Thời lượng': format_duration(duration),
                 'Loại ca': shift_type,
                 'Log hôm trước': prev_log_info
             })

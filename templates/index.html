@@ -35,12 +35,20 @@
             <input type="submit" value="Lọc dữ liệu">
         </form>
 
-        <!-- Nút download Excel -->
-        <form method="post" action="/download" id="download-form" style="margin-bottom: 20px;">
-            <input type="hidden" name="visible_columns" id="visible-columns">
-            <input type="submit" value="📥 Tải kết quả Excel">
-        </form>
+        <div class="button-container">
+            <!-- Nút download Excel -->
+            <form method="post" action="/download" id="download-form" style="margin-bottom: 0;">
+                <input type="hidden" name="visible_columns" id="visible-columns">
+                <input type="submit" value="Tải kết quả Excel">
+            </form>
 
+            <form method="get" action="/download" id="download-form" style="margin-bottom: 0;">
+                <input type="hidden" name="visible_columns" id="visible_columns_filter_input">
+                <input type="hidden" name="shift_type" value="{{ request.args.get('shift_type', '') }}">
+                <input type="hidden" name="employee_id" value="{{ request.args.get('msnv', '') }}">
+                <button type="submit" class="download-shift-id">Tải theo ca / ID</button>
+            </form>
+        </div>
 
         <div style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
             <label><input type="checkbox" class="toggle-col" data-col="0" checked> Mã số nhân viên (MSNV)</label>
@@ -50,10 +58,11 @@
             <label><input type="checkbox" class="toggle-col" data-col="4" checked> FCI trạng thái</label>
             <label><input type="checkbox" class="toggle-col" data-col="5" checked> LCO</label>
             <label><input type="checkbox" class="toggle-col" data-col="6" checked> LCO trạng thái</label>
-            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Thời lượng</label>
-            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Loại ca</label>
-            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Log hôm trước</label>
-            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Ghi chú</label>
+            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Thời lượng (theo giờ)</label>
+            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Thời lượng</label>
+            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Loại ca</label>
+            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Log hôm trước</label>
+            <label><input type="checkbox" class="toggle-col" data-col="11" checked> Ghi chú</label>
         </div>
 
         <div class="dataframe-container">

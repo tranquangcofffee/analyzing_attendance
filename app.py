@@ -3,7 +3,7 @@ from flask import Flask, request, render_template, redirect, url_for, send_file
 from flask_caching import Cache
 from datetime import datetime
 import pandas as pd
-from services.attendance_service import process_attendance
+from services.attendance_service import process_attendance, format_duration
 from services.excel_service import save_excel, get_excel_path
 from io import BytesIO
 
@@ -75,7 +75,7 @@ def index():
             df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
         shift_type = request.args.get('shift_type', '')
         if shift_type:
-            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
+            df = df[df['Loại ca'] == shift_type]
 
         result = df
         # Tính tổng thời lượng nếu lọc theo ID
@@ -116,6 +116,43 @@ def download_excel():
 
     return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
 
+
+@app.route('/download', methods=['GET'])
+def download_filtered_excel():
+    visible_cols_str = request.args.get('visible_columns', '')
+    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
+
+    shift_type = request.args.get('shift_type', '').strip()
+    employee_id = request.args.get('employee_id', '').strip()
+
+    df = cache.get('attendance_data')
+    if df is None:
+        return "Không có dữ liệu để tải.", 400
+
+    df_filtered = df.copy()
+
+    # Lọc theo loại ca (nếu có)
+    if shift_type:
+        df_filtered = df_filtered[df_filtered['Loại ca'] == shift_type]
+
+    # Lọc theo ID (nếu có)
+    if employee_id:
+        df_filtered = df_filtered[df_filtered['ID'].astype(str) == employee_id]
+
+    # Tạo cột "Thời lượng" đẹp (giờ - phút)
+    df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
+
+    # Nếu có chỉ định cột nào hiển thị thì chỉ export đúng cột đó
+    full_columns = df_filtered.columns.tolist()
+    selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
+
+    df_final = df_filtered[selected_columns] if selected_columns else df_filtered
+
+    output = BytesIO()
+    df_final.to_excel(output, index=False)
+    output.seek(0)
+
+    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
