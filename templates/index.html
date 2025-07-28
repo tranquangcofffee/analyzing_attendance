@@ -10,9 +10,15 @@
     <h1>📋 Kiểm tra công theo ca</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".csv" required>
+        <label>File chấm công (CSV):</label>
+        <input type="file" name="file" accept=".csv" required><br><br>
+
+        <label>File policy (Excel - xlsx):</label>
+        <input type="file" name="policy_file" accept=".xlsx"><br><br>
+
         <input type="submit" value="Tải lên và xử lý">
     </form>
+
 
     {% if tables %}
     <div class="result-box">
@@ -58,11 +64,13 @@
             <label><input type="checkbox" class="toggle-col" data-col="4" checked> FCI trạng thái</label>
             <label><input type="checkbox" class="toggle-col" data-col="5" checked> LCO</label>
             <label><input type="checkbox" class="toggle-col" data-col="6" checked> LCO trạng thái</label>
-            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Thời lượng (theo giờ)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Thời lượng</label>
-            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Loại ca</label>
-            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Log hôm trước</label>
-            <label><input type="checkbox" class="toggle-col" data-col="11" checked> Ghi chú</label>
+            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Giờ vào</label>
+            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Giờ ra</label>
+            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Thời lượng (theo giờ)</label>
+            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
+            <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
+            <label><input type="checkbox" class="toggle-col" data-col="12" checked> Log hôm trước</label>
+            <label><input type="checkbox" class="toggle-col" data-col="13" checked> Ghi chú</label>
         </div>
 
         <div class="dataframe-container">

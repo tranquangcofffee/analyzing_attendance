@@ -21,68 +21,75 @@ cache = Cache(app)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     result = None
+    total_duration = None  # Khởi tạo ngoài để tránh lỗi khi không có dữ liệu
 
     if request.method == 'POST':
         file = request.files['file']
+        policy_file = request.files.get('policy_file')
+
         filename = file.filename.lower()
+        policy_df = None
 
         if file and (filename.endswith('.csv') or filename.endswith('.xlsx')):
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filepath)
 
-            # Đọc file theo định dạng
             try:
+                # Đọc file chấm công
                 if filename.endswith('.csv'):
                     df = pd.read_csv(filepath, encoding='utf-8-sig')
-                else:  # Excel
+                else:
                     df = pd.read_excel(filepath)
             except Exception as e:
-                return f"Lỗi khi đọc file: {str(e)}"
+                return f"Lỗi khi đọc file chấm công: {str(e)}"
 
-            # Xử lý dữ liệu
-            result = process_attendance(df)
+            # Nếu có file policy -> đọc
+            if policy_file and policy_file.filename.endswith('.xlsx'):
+                policy_path = os.path.join(app.config['UPLOAD_FOLDER'], policy_file.filename)
+                policy_file.save(policy_path)
+
+                try:
+                    policy_df = pd.read_excel(policy_path)
+                except Exception as e:
+                    return f"Lỗi khi đọc file policy: {str(e)}"
+
+            # Gọi hàm xử lý
+            result = process_attendance(df, policy_df)
             cache.set('attendance_data', result)
 
-            # Lưu kết quả ra Excel hoặc CSV
-            save_excel(result)  # Hoặc: save_csv(result)
+            # Ghi ra file
+            save_excel(result)
 
         else:
             return "Chỉ hỗ trợ file .csv hoặc .xlsx"
 
-
-    # Lọc dữ liệu từ cache nếu có
+    # GET: lọc dữ liệu từ cache
     cached_df = cache.get('attendance_data')
 
     if cached_df is not None:
         df = cached_df.copy()
 
-        # Lọc theo các tiêu chí
         msnv = request.args.get('msnv', '').strip()
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
         shift_type = request.args.get('shift_type', '')
-        if shift_type:
-            df = df[df['Loại ca'].str.contains(shift_type, case=False, na=False)]
 
+        if shift_type:
+            df = df[df['Loại ca'] == shift_type]
         if msnv:
             df = df[df['ID'].astype(str) == msnv]
         if name:
-            df = df[df['Họ tên'].str.lower().str.contains(name)]
+            df = df[df['Họ tên'].str.lower() == name]
         if start_date:
             df = df[df['Ngày'] >= pd.to_datetime(start_date).date()]
         if end_date:
             df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
-        shift_type = request.args.get('shift_type', '')
-        if shift_type:
-            df = df[df['Loại ca'] == shift_type]
 
         result = df
-        # Tính tổng thời lượng nếu lọc theo ID
-        
-        total_duration = None
+
         if msnv:
-            total_seconds = int(df['Thời lượng (h)'].sum() * 3600)  # Chuyển đổi giờ sang giây
+            total_seconds = int(df['Thời lượng (h)'].sum() * 3600)
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
             total_duration = f"{hours} giờ {minutes} phút"
@@ -90,7 +97,7 @@ def index():
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
         titles=result.columns.values if result is not None else None,
-        result=result if result is not None else pd.DataFrame(),  # để dùng trong template
+        result=result if result is not None else pd.DataFrame(),
         total_duration=total_duration if result is not None else None
     )
 
