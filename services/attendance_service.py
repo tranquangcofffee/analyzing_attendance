@@ -137,10 +137,12 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         # Ghi đè FCI/LCO và fci/lco với thời gian từ chính sách
-        df_result.at[idx, 'fci'] = shift_start
-        df_result.at[idx, 'lco'] = shift_end
-        df_result.at[idx, 'FCI'] = shift_start.strftime('%d/%m - %H:%M:%S')
-        df_result.at[idx, 'LCO'] = shift_end.strftime('%d/%m - %H:%M:%S')
+        # df_result.at[idx, 'fci'] = shift_start
+        # df_result.at[idx, 'lco'] = shift_end
+
+        # Set lại thời gian lấy từ policy là TimeIn, TimeOut
+        df_result.at[idx, 'Giờ vào'] = shift_start.strftime('%d/%m - %H:%M:%S')
+        df_result.at[idx, 'Giờ ra'] = shift_end.strftime('%d/%m - %H:%M:%S')
 
         # Tính toán và ghi đè thời lượng ca
         shift_duration = (shift_end - shift_start).total_seconds() / 3600
@@ -244,12 +246,12 @@ def process_attendance(df, policy_df=None):
                 'ID': str(emp_id),  # Đảm bảo ID là chuỗi
                 'Họ tên': name,
                 'Ngày': pd.Timestamp(date_report),  # Chuyển thành pd.Timestamp
-                'FCI': fci.strftime('%d/%m - %H:%M:%S'),
+                'fci': fci.strftime('%d/%m - %H:%M:%S'),
                 'FCI trạng thái': fci_status,
-                'LCO': lco.strftime('%d/%m - %H:%M:%S'),
+                'lco': lco.strftime('%d/%m - %H:%M:%S'),
                 'LCO trạng thái': lco_status,
-                'fci': fci,
-                'lco': lco,
+                'Giờ vào': fci,
+                'Giờ ra': lco,
                 'Thời lượng (h)': round(duration, 2),
                 'Thời lượng': format_duration(duration),
                 'Loại ca': shift_type,
