@@ -81,10 +81,21 @@ def index():
             df = df[df['ID'].astype(str) == msnv]
         if name:
             df = df[df['Họ tên'].str.lower() == name]
+
+        # Filter by date range using string comparison
         if start_date:
-            df = df[df['Ngày'] >= pd.to_datetime(start_date).date()]
+            try:
+                # Validate date format
+                pd.to_datetime(start_date)  # Ensure valid date
+                df = df[df['Ngày chấm công'] >= start_date]
+            except ValueError:
+                return "Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
         if end_date:
-            df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
+            try:
+                pd.to_datetime(end_date)  # Ensure valid date
+                df = df[df['Ngày chấm công'] <= end_date]
+            except ValueError:
+                return "Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
 
         result = df
 
