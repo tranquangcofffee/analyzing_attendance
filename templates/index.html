@@ -48,7 +48,7 @@
                 <input type="submit" value="Tải kết quả Excel">
             </form>
 
-            <form method="get" action="/download" id="download-form" style="margin-bottom: 0;">
+            <form method="get" action="/download" id="download-filter-form" style="margin-bottom: 0;">
                 <input type="hidden" name="visible_columns" id="visible_columns_filter_input">
                 <input type="hidden" name="shift_type" value="{{ request.args.get('shift_type', '') }}">
                 <input type="hidden" name="employee_id" value="{{ request.args.get('msnv', '') }}">
