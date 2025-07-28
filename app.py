@@ -142,6 +142,9 @@ def download_filtered_excel():
 
     shift_type = request.args.get('shift_type', '').strip()
     employee_id = request.args.get('employee_id', '').strip()
+    name = request.args.get('name', '').strip().lower()
+
+    file_name = employee_id + name
 
     df = cache.get('attendance_data')
     if df is None:
@@ -183,7 +186,7 @@ def download_filtered_excel():
     df_final.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name=employee_id + '.xlsx', as_attachment=True)
+    return send_file(output, download_name=file_name + '.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

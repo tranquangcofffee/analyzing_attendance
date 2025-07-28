@@ -238,10 +238,37 @@ def process_attendance(df, policy_df=None):
                 morning_shift = check_morning_shift_with_missing_log(fci, log_count)
                 shift_type = morning_shift if morning_shift else 'Thiếu log'
             else:
+                # if duration >= 17:
+                #     shift_type = 'Thông ca'
+                # elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
+                #     shift_type = 'Ca sáng'
+                # elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
+                #     if lco.date() > fci.date() or lco.hour <= 8:
+                #         shift_type = 'Ca đêm'
+
                 if duration >= 17:
                     shift_type = 'Thông ca'
+
                 elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
-                    shift_type = 'Ca sáng'
+                    # Ca sáng — kiểm tra xem có nhiều log trong ngày không
+                    same_day_logs = group[group['date'] == fci.date()]
+                    morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
+                    morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
+                    
+                    if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
+                        # Lấy FCI sớm nhất, LCO trễ nhất trong ngày
+                        earliest_fci = morning_fc_in['datetime'].min()
+                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 20]['datetime'].max()
+                        new_duration = (latest_lco - earliest_fci).total_seconds() / 3600 if pd.notna(latest_lco) else 0
+                        
+                        if new_duration >= TIME_FLAG:
+                            fci = earliest_fci
+                            lco = latest_lco
+                            duration = new_duration
+                            shift_type = 'Ca sáng'
+                    else:
+                        shift_type = 'Ca sáng'
+
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 8:
                         shift_type = 'Ca đêm'
