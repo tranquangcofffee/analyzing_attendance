@@ -76,7 +76,7 @@ def index():
         shift_type = request.args.get('shift_type', '')
 
         if shift_type:
-            df = df[df['Loại Ca'] == shift_type]
+            df = df[df['Loại ca'] == shift_type]
         if msnv:
             df = df[df['ID'].astype(str) == msnv]
         if name:

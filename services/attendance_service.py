@@ -96,7 +96,7 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         policy = policy_map[emp_id]
-        shift_type = row.get('Loại Ca', '')
+        shift_type = row.get('Loại ca', '')
         date_ref = row.get('Ngày chấm công')
 
         # Kiểm tra và chuyển đổi date_ref
@@ -270,7 +270,7 @@ def process_attendance(df, policy_df=None):
                 'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
                 'Thời lượng (h)': round(duration, 2),
                 'Thời lượng': format_duration(duration),
-                'Loại Ca': shift_type,
+                'Loại ca': shift_type,
                 'Log hôm trước': prev_log_info
             })
 
@@ -282,7 +282,7 @@ def process_attendance(df, policy_df=None):
     df_result['Ghi chú'] = ""
     df_result = df_result[[
         'ID', 'Họ tên', 'Ngày chấm công', 'Giờ vào', 'Giờ ra', 'FirstCheckIn', 'FCIStatus',
-        'LastCheckOut', 'LCOStatus', 'Thời lượng (h)', 'Thời lượng', 'Loại Ca',
+        'LastCheckOut', 'LCOStatus', 'Thời lượng (h)', 'Thời lượng', 'Loại ca',
         'Log hôm trước', 'Ghi chú'
     ]]
     df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
