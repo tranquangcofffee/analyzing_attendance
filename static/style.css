@@ -1,13 +1,13 @@
 body {
     font-family: 'Roboto', sans-serif;
-    background: linear-gradient(45deg, #f9a77b, #fbd1a2); /* Softer orange gradient background */
+    background: #f5f5dc; /* Ivory background color */
     color: #333;
     margin: 0;
     padding: 20px;
 }
 
 h1 {
-    color: #fefefe;
+    color: #f9a77b;
     text-align: center;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
