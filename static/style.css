@@ -163,6 +163,33 @@ button.download-shift-id:hover,
 .logo {
     width: 350px; /* Increase width */
     height: auto; /* Maintain aspect ratio */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadowbox effect */
-    border-radius: 10px; /* Optional: Add rounded corners */
+}
+
+.select-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto 20px auto;
+}
+
+select[multiple] {
+    width: 300px;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #ffffff, #f2f2f2);
+    color: #333;
+    font-size: 14px;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05),
+                inset -2px -2px 5px rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+    outline: none;
+    height: 150px;
+    overflow-y: auto;
+}
+
+select[multiple] option:hover {
+    background-color: #f0f0f0;
+    color: #333;
 }

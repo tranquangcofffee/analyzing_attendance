@@ -73,10 +73,11 @@ def index():
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
-        shift_type = request.args.get('shift_type', '')
+        shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
 
-        if shift_type:
-            df = df[df['Loại ca'] == shift_type]
+        # Lọc theo loại ca
+        if shift_types:
+            df = df[df['Loại ca'].isin(shift_types)]
         if msnv:
             df = df[df['ID'].astype(str) == msnv]
         if name:
