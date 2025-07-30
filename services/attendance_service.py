@@ -3,6 +3,14 @@ import pandas as pd
 import re
 
 TIME_FLAG = 4
+DAY_PARSE_ERROR = 'Ngày không hợp lệ, vui lòng kiểm tra định dạng ngày tháng năm.'
+MISSING_CHECKIN = 'Thiếu check-in, vui lòng kiểm tra dữ liệu chấm công.'
+MISSING_CHECKOUT = 'Thiếu check-out, vui lòng kiểm tra dữ liệu chấm công.'
+MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO), vui lòng kiểm tra dữ liệu chấm công.'
+THROUGH_SHIFT = 'Thông ca'
+THROUGH_SHIFT_PASSED = 'Bỏ qua vì là Thông ca'
+POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
+POLICY_IS_NOT_EXIST = 'Chính sách không tồn tại cho nhân sự {0}'
 
 def parse_timestamp(ts):
     try:
@@ -95,8 +103,8 @@ def apply_policy_adjustments(df_result, policy_df):
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
         if emp_id not in policy_map:
-            df_result.at[idx, 'Ghi chú'] = f"Không tìm thấy chính sách cho ID {emp_id}"
-            df_result.at[idx, 'Đi trễ/Về sớm'] = "Không có chính sách"
+            df_result.at[idx, 'Ghi chú'] = POLICY_IS_NOT_EXIST.format(emp_id)
+            df_result.at[idx, 'Đi trễ/Về sớm'] = POLICY_IS_NOT_EXIST
             continue
 
         policy = policy_map[emp_id]
@@ -112,18 +120,18 @@ def apply_policy_adjustments(df_result, policy_df):
             elif isinstance(date_ref, pd.Timestamp.date):
                 date_ref = pd.Timestamp(date_ref)
             else:
-                df_result.at[idx, 'Ghi chú'] = f"Ngày tham chiếu không hợp lệ: {type(date_ref)}"
-                df_result.at[idx, 'Đi trễ/Về sớm'] = "Ngày không hợp lệ"
+                df_result.at[idx, 'Ghi chú'] = DAY_PARSE_ERROR
+                df_result.at[idx, 'Đi trễ/Về sớm'] = DAY_PARSE_ERROR
                 continue
         except Exception as e:
-            df_result.at[idx, 'Ghi chú'] = f"Lỗi chuyển đổi ngày vì thiếu checkin/checkout: {str(e)}"
-            df_result.at[idx, 'Đi trễ/Về sớm'] = "Lỗi ngày"
+            df_result.at[idx, 'Ghi chú'] = MISSING_SCAN_BIO
+            df_result.at[idx, 'Đi trễ/Về sớm'] = DAY_PARSE_ERROR
             continue
 
         # Bỏ qua nếu là Thông ca
         if 'Thông ca' in shift_type:
-            df_result.at[idx, 'Ghi chú'] = "Bỏ qua vì là Thông ca"
-            df_result.at[idx, 'Đi trễ/Về sớm'] = "Thông ca"
+            df_result.at[idx, 'Ghi chú'] = THROUGH_SHIFT_PASSED
+            df_result.at[idx, 'Đi trễ/Về sớm'] = THROUGH_SHIFT
             continue
 
         # Xác định thời gian bắt đầu và kết thúc dựa trên loại ca
@@ -141,7 +149,7 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         if not shift_start or not shift_end:
-            df_result.at[idx, 'Ghi chú'] = f"Thời gian chính sách không hợp lệ cho ID {emp_id}: start={policy.get('start_day')}, end={policy.get('end_day')}"
+            df_result.at[idx, 'Ghi chú'] = POLICY_IS_NOT_APPLICABLE
             df_result.at[idx, 'Đi trễ/Về sớm'] = "Thời gian chính sách không hợp lệ"
             continue
 
@@ -291,10 +299,11 @@ def process_attendance(df, policy_df=None):
                 #     if lco.date() > fci.date() or lco.hour <= 8:
                 #         shift_type = 'Ca đêm'
 
-                if duration >= 17:
+                if 19 <= fci.hour and duration >= 17:
                     shift_type = 'Thông ca'
 
-                elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
+                # Nới rộng giờ ra để quét
+                elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     # Ca sáng — kiểm tra xem có nhiều log trong ngày không
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
@@ -315,7 +324,7 @@ def process_attendance(df, policy_df=None):
                         shift_type = 'Ca sáng'
 
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
-                    if lco.date() > fci.date() or lco.hour <= 8:
+                    if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
 
             prev_day = date_report - timedelta(days=1)
