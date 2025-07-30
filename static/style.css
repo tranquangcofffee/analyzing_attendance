@@ -1,14 +1,15 @@
 body {
     font-family: 'Roboto', sans-serif;
-    background: #f5f7fa;
+    background: #f5f5dc; /* Ivory background color */
     color: #333;
     margin: 0;
     padding: 20px;
 }
 
 h1 {
-    color: #2c3e50;
+    color: #f9a77b;
     text-align: center;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 form {
@@ -17,28 +18,21 @@ form {
     padding: 15px;
     background: #ffffff;
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-input[type=file] {
+input[type=file], input[type=submit] {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
-}
-
-input[type=submit] {
-    padding: 14px 28px;
-    margin-left: 10px;
-    background-color: #007bff;
+    background: linear-gradient(45deg, #f9a77b, #fbd1a2);
     color: white;
-    border: none;
-    border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 input[type=submit]:hover {
-    background-color: #0056b3;
+    background: linear-gradient(45deg, #f89b6d, #fbc8a0);
     transform: scale(1.05);
 }
 
@@ -56,17 +50,17 @@ input[type=submit]:hover {
 }
 
 .dataframe th {
-    background-color: #f2f2f2;
-    color: #2c3e50;
+    background-color: #fbd1a2;
+    color: #333;
     font-weight: bold;
 }
 
 .dataframe tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: #fef5e6;
 }
 
 .dataframe tr:hover {
-    background-color: #e3f2fd;
+    background-color: #fde0cc;
 }
 
 .result-box {
@@ -75,7 +69,6 @@ input[type=submit]:hover {
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     max-width: 4000px;
-    max-height: 1200px; /* Increased height for more records */
     margin: auto;
 }
 
@@ -83,13 +76,15 @@ label {
     margin-right: 15px;
     font-size: 14px;
     cursor: pointer;
+    color: #333;
 }
 
 .dataframe-container {
-    max-height: 6000px;  /* Increased height for more records */
+    max-height: 6000px;
     overflow-y: auto;
     border: 1px solid #ccc;
     position: relative;
+    background: white;
 }
 
 table.data {
@@ -128,13 +123,13 @@ table.data {
 
 button.download-shift-id,
 .button-container form input[type=submit] {
-    background: linear-gradient(45deg, #ff7e5f, #feb47b); /* Gradient orange */
+    background: linear-gradient(45deg, #f9a77b, #fbd1a2);
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
-    height: 40px; /* Ensure consistent height */
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -144,7 +139,7 @@ button.download-shift-id,
 button.download-shift-id:hover,
 .button-container form input[type=submit]:hover {
     transform: scale(1.05);
-    background: linear-gradient(45deg, #ff6a4d, #fd9a6e); /* Darker gradient on hover */
+    background: linear-gradient(45deg, #f89b6d, #fbc8a0);
 }
 
 .button-container {
@@ -157,4 +152,44 @@ button.download-shift-id:hover,
 .button-container form {
     display: flex;
     align-items: center; /* Align buttons within forms */
+}
+
+.logo-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.logo {
+    width: 350px; /* Increase width */
+    height: auto; /* Maintain aspect ratio */
+}
+
+.select-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto 20px auto;
+}
+
+select[multiple] {
+    width: 300px;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #ffffff, #f2f2f2);
+    color: #333;
+    font-size: 14px;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05),
+                inset -2px -2px 5px rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+    outline: none;
+    height: 150px;
+    overflow-y: auto;
+}
+
+select[multiple] option:hover {
+    background-color: #f0f0f0;
+    color: #333;
 }

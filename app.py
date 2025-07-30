@@ -73,18 +73,30 @@ def index():
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
-        shift_type = request.args.get('shift_type', '')
+        shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
 
-        if shift_type:
-            df = df[df['Loại ca'] == shift_type]
+        # Lọc theo loại ca
+        if shift_types:
+            df = df[df['Loại ca'].isin(shift_types)]
         if msnv:
             df = df[df['ID'].astype(str) == msnv]
         if name:
             df = df[df['Họ tên'].str.lower() == name]
+
+        # Filter by date range using string comparison
         if start_date:
-            df = df[df['Ngày'] >= pd.to_datetime(start_date).date()]
+            try:
+                # Validate date format
+                pd.to_datetime(start_date)  # Ensure valid date
+                df = df[df['Ngày chấm công'] >= start_date]
+            except ValueError:
+                return "Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
         if end_date:
-            df = df[df['Ngày'] <= pd.to_datetime(end_date).date()]
+            try:
+                pd.to_datetime(end_date)  # Ensure valid date
+                df = df[df['Ngày chấm công'] <= end_date]
+            except ValueError:
+                return "Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
 
         result = df
 
@@ -129,8 +141,11 @@ def download_filtered_excel():
     visible_cols_str = request.args.get('visible_columns', '')
     visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
 
-    shift_type = request.args.get('shift_type', '').strip()
+    shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
     employee_id = request.args.get('employee_id', '').strip()
+    name = request.args.get('name', '').strip().lower()
+
+    file_name = employee_id + name
 
     df = cache.get('attendance_data')
     if df is None:
@@ -139,8 +154,8 @@ def download_filtered_excel():
     df_filtered = df.copy()
 
     # Lọc theo loại ca (nếu có)
-    if shift_type:
-        df_filtered = df_filtered[df_filtered['Loại ca'] == shift_type]
+    if shift_types:
+        df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
 
     # Lọc theo ID (nếu có)
     if employee_id:
@@ -149,17 +164,30 @@ def download_filtered_excel():
     # Tạo cột "Thời lượng" đẹp (giờ - phút)
     df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
 
-    # Nếu có chỉ định cột nào hiển thị thì chỉ export đúng cột đó
+    # Lấy đúng thứ tự cột như hiển thị HTML
     full_columns = df_filtered.columns.tolist()
     selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
-
     df_final = df_filtered[selected_columns] if selected_columns else df_filtered
+
+    total_duration = None
+    if employee_id:
+        total_seconds = int(df_filtered['Thời lượng (h)'].sum() * 3600)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        total_duration = f"{hours} giờ {minutes} phút"
+
+    # Thêm dòng tổng thời lượng nếu có
+    if total_duration and employee_id:
+        # Tạo DataFrame cho dòng tổng
+        total_row = pd.DataFrame([['Tổng thời lượng', total_duration] if 'Thời lượng' in df_final.columns else ['Tổng', total_duration]], 
+                                columns=[df_final.columns[0], df_final.columns[-1]])
+        df_final = pd.concat([df_final, total_row], ignore_index=True)
 
     output = BytesIO()
     df_final.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
+    return send_file(output, download_name=file_name + '.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
