@@ -141,7 +141,7 @@ def download_filtered_excel():
     visible_cols_str = request.args.get('visible_columns', '')
     visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
 
-    shift_type = request.args.get('shift_type', '').strip()
+    shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
     employee_id = request.args.get('employee_id', '').strip()
     name = request.args.get('name', '').strip().lower()
 
@@ -154,8 +154,8 @@ def download_filtered_excel():
     df_filtered = df.copy()
 
     # Lọc theo loại ca (nếu có)
-    if shift_type:
-        df_filtered = df_filtered[df_filtered['Loại ca'] == shift_type]
+    if shift_types:
+        df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
 
     # Lọc theo ID (nếu có)
     if employee_id:

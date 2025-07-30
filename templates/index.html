@@ -56,7 +56,9 @@
 
             <form method="get" action="/download" id="download-filter-form" style="margin-bottom: 0;">
                 <input type="hidden" name="visible_columns" id="visible_columns_filter_input">
-                <input type="hidden" name="shift_type" value="{{ request.args.get('shift_type', '') }}">
+                {% for shift in request.args.getlist('shift_type[]') %}
+                    <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
                 <input type="hidden" name="employee_id" value="{{ request.args.get('msnv', '') }}">
                 <button type="submit" class="download-shift-id">Tải theo ca / ID</button>
             </form>
