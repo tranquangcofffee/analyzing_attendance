@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import re
 
+#region # Constants and error messages
 TIME_FLAG = 4
 DAY_PARSE_ERROR = 'Ngày không hợp lệ, vui lòng kiểm tra định dạng ngày tháng năm.'
 MISSING_CHECKIN = 'Thiếu check-in, vui lòng kiểm tra dữ liệu chấm công.'
@@ -11,6 +12,7 @@ THROUGH_SHIFT = 'Thông ca'
 THROUGH_SHIFT_PASSED = 'Bỏ qua vì là Thông ca'
 POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
 POLICY_IS_NOT_EXIST = 'Chính sách không tồn tại cho nhân sự {0}'
+#endregion
 
 def parse_timestamp(ts):
     try:
@@ -244,7 +246,7 @@ def process_attendance(df, policy_df=None):
     records = []
     grouped = df.groupby(['id', 'full_name'])
 
-    TIME_FLAG = 4  # Số giờ tối thiểu cho ca hợp lệ
+    TIME_FLAG = 6  # Số giờ tối thiểu cho ca hợp lệ
 
     for (emp_id, name), group in grouped:
         group = group.sort_values(by='datetime').reset_index()
@@ -299,7 +301,7 @@ def process_attendance(df, policy_df=None):
                 #     if lco.date() > fci.date() or lco.hour <= 8:
                 #         shift_type = 'Ca đêm'
 
-                if 19 <= fci.hour and duration >= 17:
+                if 17 <= fci.hour and duration >= 17:
                     shift_type = 'Thông ca'
 
                 # Nới rộng giờ ra để quét
@@ -312,7 +314,7 @@ def process_attendance(df, policy_df=None):
                     if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
                         # Lấy FCI sớm nhất, LCO trễ nhất trong ngày
                         earliest_fci = morning_fc_in['datetime'].min()
-                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 20]['datetime'].max()
+                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 22]['datetime'].max()
                         new_duration = (latest_lco - earliest_fci).total_seconds() / 3600 if pd.notna(latest_lco) else 0
                         
                         if new_duration >= TIME_FLAG:
