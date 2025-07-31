@@ -7,7 +7,7 @@ TIME_FLAG = 4
 DAY_PARSE_ERROR = 'Ngày không hợp lệ, vui lòng kiểm tra định dạng ngày tháng năm.'
 MISSING_CHECKIN = 'Thiếu check-in, vui lòng kiểm tra dữ liệu chấm công.'
 MISSING_CHECKOUT = 'Thiếu check-out, vui lòng kiểm tra dữ liệu chấm công.'
-MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO), vui lòng kiểm tra dữ liệu chấm công.'
+MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO) {0}, vui lòng kiểm tra dữ liệu chấm công.'
 THROUGH_SHIFT = 'Thông ca'
 THROUGH_SHIFT_PASSED = 'Bỏ qua vì là Thông ca'
 POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
@@ -332,7 +332,7 @@ def process_attendance(df, policy_df=None):
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "Không có"
 
-            if shift_type in ['Thiếu log', 'Ca sáng thiếu log']:
+            if shift_type in ['Thiếu log', 'Ca sáng thiếu log', 'Thiếu FCI']:
                 if prev_day in group_by_date.groups:
                     prev_logs = group_by_date.get_group(prev_day)
                     prev_entries = [
@@ -344,7 +344,7 @@ def process_attendance(df, policy_df=None):
             records.append({
                 'ID': str(emp_id),
                 'Họ tên': name,
-                'Ngày chấm công': date_report.strftime('%Y-%m-%d'),
+                'Ngày chấm công': date_report.strftime('%d-%m-%Y'),
                 'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
                 'FCIStatus': fci_status,
                 'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
