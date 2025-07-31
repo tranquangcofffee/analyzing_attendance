@@ -17,6 +17,24 @@ app.config['CACHE_TYPE'] = 'SimpleCache'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60  # giữ cache 1 giờ
 cache = Cache(app)
 
+def sort_attendance_df(df):
+    df_regular = df[~df['ID'].astype(str).str.startswith('OUTSIDE_')].copy()
+    df_outside = df[df['ID'].astype(str).str.startswith('OUTSIDE_')].copy()
+
+    # Sắp theo ID số (đối với nhân viên thường)
+    df_regular['ID_sort'] = df_regular['ID'].astype(int)
+
+    # Sắp theo số sau OUTSIDE_ (ví dụ OUTSIDE_3 -> 3)
+    df_outside['ID_sort'] = df_outside['ID'].astype(str).str.extract(r'OUTSIDE_(\d+)').astype(int)
+
+    # Sắp theo ID_sort và Ngày chấm công
+    df_regular = df_regular.sort_values(by=['ID_sort', 'Ngày chấm công'])
+    df_outside = df_outside.sort_values(by=['ID_sort', 'Ngày chấm công'])
+
+    # Gộp lại, nhân viên thường trước
+    df_sorted = pd.concat([df_regular, df_outside], ignore_index=True)
+
+    return df_sorted.drop(columns=['ID_sort'])
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -98,13 +116,21 @@ def index():
             except ValueError:
                 return "Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
 
-        result = df
-
         if msnv:
             total_seconds = int(df['Thời lượng (h)'].sum() * 3600)
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
             total_duration = f"{hours} giờ {minutes} phút"
+        
+        try:
+            df['ID_sort'] = df['ID'].apply(lambda x: int(str(x).split('_')[-1]) if 'OUTSIDE_' in str(x) else int(x))
+        except ValueError:
+            df['ID_sort'] = df['ID']  # fallback nếu có lỗi
+
+        df = df.sort_values(by=['ID_sort', 'Ngày chấm công']).drop(columns=['ID_sort'])
+
+        df = sort_attendance_df(df)
+        result = df
 
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
