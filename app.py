@@ -56,6 +56,8 @@ def index():
                 # Đọc file chấm công
                 if filename.endswith('.csv'):
                     df = pd.read_csv(filepath, encoding='utf-8-sig')
+                elif filename.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(filepath)
                 else:
                     df = pd.read_excel(filepath)
             except Exception as e:
