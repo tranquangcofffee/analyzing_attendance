@@ -246,8 +246,6 @@ def process_attendance(df, policy_df=None):
     records = []
     grouped = df.groupby(['id', 'full_name'])
 
-    TIME_FLAG = 6  # Số giờ tối thiểu cho ca hợp lệ
-
     for (emp_id, name), group in grouped:
         group = group.sort_values(by='datetime').reset_index()
         group['date'] = group['datetime'].dt.date
