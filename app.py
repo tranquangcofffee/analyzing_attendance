@@ -36,6 +36,61 @@ def sort_attendance_df(df):
 
     return df_sorted.drop(columns=['ID_sort'])
 
+def filter_by_date(df, start_date=None, end_date=None):
+    """Lọc DataFrame theo khoảng ngày, hỗ trợ định dạng MM/dd/yyyy (HTML) và yyyy-mm-dd (GET)."""
+    if not start_date and not end_date:
+        return df
+
+    # Debug: In giá trị đầu vào và các giá trị trong Ngày chấm công
+    print(f"Filtering with start_date: {start_date}, end_date: {end_date}")
+    print(f"Ngày chấm công values: {df['Ngày chấm công'].unique()}")
+
+    # Chuyển đổi Ngày chấm công sang datetime
+    try:
+        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='%d/%m/%Y', dayfirst=True)
+    except Exception as e:
+        print(f"Error parsing Ngày chấm công: {e}")
+        # Thử parse với format='mixed' nếu định dạng không đồng nhất
+        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='mixed', dayfirst=True, errors='coerce')
+        if df['Ngày chấm công_dt'].isna().any():
+            print(f"Warning: Some Ngày chấm công values could not be parsed: {df[df['Ngày chấm công_dt'].isna()]['Ngày chấm công']}")
+            return df
+
+    # Danh sách định dạng ngày được hỗ trợ cho start_date và end_date
+    date_formats = ['%m/%d/%Y', '%Y-%m-%d']
+
+    # Lọc theo start_date
+    if start_date:
+        start_date_dt = None
+        for fmt in date_formats:
+            try:
+                start_date_dt = pd.to_datetime(start_date, format=fmt)
+                print(f"Parsed start_date: {start_date_dt} (format: {fmt})")
+                df = df[df['Ngày chấm công_dt'] >= start_date_dt]
+                break
+            except ValueError:
+                continue
+        if start_date_dt is None:
+            raise ValueError("Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng MM/dd/yyyy hoặc yyyy-mm-dd.")
+
+    # Lọc theo end_date
+    if end_date:
+        end_date_dt = None
+        for fmt in date_formats:
+            try:
+                end_date_dt = pd.to_datetime(end_date, format=fmt)
+                print(f"Parsed end_date: {end_date_dt} (format: {fmt})")
+                df = df[df['Ngày chấm công_dt'] <= end_date_dt]
+                break
+            except ValueError:
+                continue
+        if end_date_dt is None:
+            raise ValueError("Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng MM/dd/yyyy hoặc yyyy-mm-dd.")
+
+    # Xóa cột tạm
+    df = df.drop(columns=['Ngày chấm công_dt'])
+    return df
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     result = None
@@ -103,20 +158,11 @@ def index():
         if name:
             df = df[df['Họ tên'].str.lower() == name]
 
-        # Filter by date range using string comparison
-        if start_date:
-            try:
-                # Validate date format
-                pd.to_datetime(start_date)  # Ensure valid date
-                df = df[df['Ngày chấm công'] >= start_date]
-            except ValueError:
-                return "Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
-        if end_date:
-            try:
-                pd.to_datetime(end_date)  # Ensure valid date
-                df = df[df['Ngày chấm công'] <= end_date]
-            except ValueError:
-                return "Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
+        # Lọc theo ngày sử dụng filter_by_date
+        try:
+            df = filter_by_date(df, start_date, end_date)
+        except ValueError as e:
+            return str(e)
 
         if msnv:
             total_seconds = int(df['Thời lượng (h)'].sum() * 3600)
