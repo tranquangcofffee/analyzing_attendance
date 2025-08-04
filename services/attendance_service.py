@@ -326,6 +326,9 @@ def process_attendance(df, policy_df=None):
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
+                        
+                elif duration >= 15: 
+                    shift_type = 'Sự kiện đặc biệt'
 
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "Không có"

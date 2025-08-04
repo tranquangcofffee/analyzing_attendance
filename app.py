@@ -142,26 +142,67 @@ def index():
     )
 
 
-@app.route('/download', methods=['POST'])
+@app.route('/download', methods=['GET', 'POST'])
 def download_excel():
-    visible_cols_str = request.form.get('visible_columns', '')
-    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
-
+    # Lấy dữ liệu
     df = cache.get('attendance_data')
     if df is None:
         return "Không có dữ liệu để tải.", 400
 
-    # Lấy đúng thứ tự cột như hiển thị HTML
-    full_columns = df.columns.tolist()
+    # Xử lý nguồn dữ liệu đầu vào
+    if request.method == 'POST':
+        visible_cols_str = request.form.get('visible_columns', '')
+        shift_types = request.form.getlist('shift_type[]')
+        employee_id = request.form.get('employee_id', '').strip()
+        name = request.form.get('name', '').strip().lower()
+    else:  # GET
+        visible_cols_str = request.args.get('visible_columns', '')
+        shift_types = request.args.getlist('shift_type[]')
+        employee_id = request.args.get('employee_id', '').strip()
+        name = request.args.get('name', '').strip().lower()
+
+    # Lọc dữ liệu nếu có shift_type hoặc ID
+    df_filtered = df.copy()
+
+    if shift_types:
+        df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
+
+    if employee_id:
+        df_filtered = df_filtered[df_filtered['ID'].astype(str) == employee_id]
+
+    # Tính thời lượng nếu có
+    if 'Thời lượng (h)' in df_filtered.columns:
+        df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
+
+    # Chọn cột cần export
+    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
+    full_columns = df_filtered.columns.tolist()
     selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
+    df_final = df_filtered[selected_columns] if selected_columns else df_filtered
 
-    df_filtered = df[selected_columns]
+    # Tính tổng thời lượng (nếu lọc theo ID)
+    total_duration = None
+    if employee_id and 'Thời lượng (h)' in df_filtered.columns:
+        total_seconds = int(df_filtered['Thời lượng (h)'].sum() * 3600)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        total_duration = f"{hours} giờ {minutes} phút"
 
+    # Thêm dòng tổng
+    if total_duration and 'Thời lượng' in df_final.columns:
+        total_row = pd.DataFrame(
+            [['Tổng thời lượng', total_duration]],
+            columns=[df_final.columns[0], df_final.columns[-1]]
+        )
+        df_final = pd.concat([df_final, total_row], ignore_index=True)
+
+    # Xuất file Excel
     output = BytesIO()
-    df_filtered.to_excel(output, index=False)
+    df_final.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
+    file_name = (employee_id + name if employee_id else "ket_qua_loc") + '.xlsx'
+    return send_file(output, download_name=file_name, as_attachment=True)
 
 
 @app.route('/download', methods=['GET'])
