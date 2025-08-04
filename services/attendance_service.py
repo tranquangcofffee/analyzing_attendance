@@ -2,15 +2,17 @@ from datetime import datetime, timedelta
 import pandas as pd
 import re
 
+#region # Constants and error messages
 TIME_FLAG = 4
 DAY_PARSE_ERROR = 'Ngày không hợp lệ, vui lòng kiểm tra định dạng ngày tháng năm.'
 MISSING_CHECKIN = 'Thiếu check-in, vui lòng kiểm tra dữ liệu chấm công.'
 MISSING_CHECKOUT = 'Thiếu check-out, vui lòng kiểm tra dữ liệu chấm công.'
-MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO), vui lòng kiểm tra dữ liệu chấm công.'
+MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO) {0}, vui lòng kiểm tra dữ liệu chấm công.'
 THROUGH_SHIFT = 'Thông ca'
 THROUGH_SHIFT_PASSED = 'Bỏ qua vì là Thông ca'
 POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
 POLICY_IS_NOT_EXIST = 'Chính sách không tồn tại cho nhân sự {0}'
+#endregion
 
 def parse_timestamp(ts):
     try:
@@ -30,33 +32,38 @@ def format_duration(hours):
     m = total_minutes % 60
     return f"{h} giờ {m} phút" if total_minutes > 0 else "0 phút"
 
-def check_morning_shift_with_missing_log(fci, log_count):
-    if log_count <= 1:
-        if 5 <= fci.hour <= 10 or fci.hour < 22:
-            return 'Ca sáng thiếu log'
-    return None
-
 def handle_single_logs(group, processed_indices, emp_id, name, records):
     for idx, row in group.iterrows():
         if idx in processed_indices:
             continue
 
         log_date = row['datetime'].date()
+        fci = row['datetime']
+        
+        # Kiểm tra ca sáng thiếu log
+        log_count = 1  # Giả sử chỉ có 1 log (Vào hoặc Ra)
+        shift_type = None
         if row['key'] == 'Vào':
+            if 5 <= fci.hour <= 10 or fci.hour < 22:
+                shift_type = 'Ca sáng thiếu log'
+            else:
+                shift_type = 'Thiếu LCO'
+                
             records.append({
                 'ID': emp_id,
                 'Họ tên': name,
                 'Ngày': log_date,
-                'FCI': row['datetime'].strftime('%d/%m - %H:%M:%S'),
+                'FCI': fci.strftime('%d/%m - %H:%M:%S'),
                 'FCI trạng thái': 'Vào',
                 'LCO': 'Không có',
                 'LCO trạng thái': 'Không có',
                 'Thời lượng (h)': 0,
-                'Loại ca': 'Thiếu LCO',
+                'Loại ca': shift_type,
                 'Log hôm trước': 'None'
             })
 
         elif row['key'] == 'Ra':
+            shift_type = 'Thiếu FCI'
             records.append({
                 'ID': emp_id,
                 'Họ tên': name,
@@ -66,9 +73,19 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                 'LCO': row['datetime'].strftime('%d/%m - %H:%M:%S'),
                 'LCO trạng thái': 'Ra',
                 'Thời lượng (h)': 0,
-                'Loại ca': 'Thiếu FCI',
+                'Loại ca': shift_type,
                 'Log hôm trước': 'None'
             })
+
+def remove_nan_rows(df_result):
+    """Loại bỏ các dòng có giá trị NaN trong các cột quan trọng."""
+    important_columns = ['Thời lượng (h)', 'Giờ vào', 'Giờ ra', 'FirstCheckIn', 'LastCheckOut']
+    initial_rows = len(df_result)
+    df_result = df_result.dropna(subset=important_columns, how='any')
+    removed_rows = initial_rows - len(df_result)
+    if removed_rows > 0:
+        print(f"Đã loại bỏ {removed_rows} dòng chứa NaN trong các cột: {important_columns}")
+    return df_result
 
 def apply_policy_adjustments(df_result, policy_df):
     """Áp dụng điều chỉnh chính sách từ file chính sách, lưu Giờ vào/ra theo chính sách, tính đi trễ/về sớm."""
@@ -244,8 +261,6 @@ def process_attendance(df, policy_df=None):
     records = []
     grouped = df.groupby(['id', 'full_name'])
 
-    TIME_FLAG = 4  # Số giờ tối thiểu cho ca hợp lệ
-
     for (emp_id, name), group in grouped:
         group = group.sort_values(by='datetime').reset_index()
         group['date'] = group['datetime'].dt.date
@@ -288,31 +303,18 @@ def process_attendance(df, policy_df=None):
             date_report = fci.date()
 
             if log_count <= 1:
-                morning_shift = check_morning_shift_with_missing_log(fci, log_count)
-                shift_type = morning_shift if morning_shift else 'Thiếu log'
+                shift_type = 'Thiếu log'
             else:
-                # if duration >= 17:
-                #     shift_type = 'Thông ca'
-                # elif 5 <= fci.hour <= 10 and lco.hour < 20 and duration >= TIME_FLAG:
-                #     shift_type = 'Ca sáng'
-                # elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
-                #     if lco.date() > fci.date() or lco.hour <= 8:
-                #         shift_type = 'Ca đêm'
-
-                if 19 <= fci.hour and duration >= 17:
+                if 17 <= fci.hour and duration >= 17:
                     shift_type = 'Thông ca'
-
-                # Nới rộng giờ ra để quét
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
-                    # Ca sáng — kiểm tra xem có nhiều log trong ngày không
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
                     morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
                     
                     if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
-                        # Lấy FCI sớm nhất, LCO trễ nhất trong ngày
                         earliest_fci = morning_fc_in['datetime'].min()
-                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 20]['datetime'].max()
+                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 22]['datetime'].max()
                         new_duration = (latest_lco - earliest_fci).total_seconds() / 3600 if pd.notna(latest_lco) else 0
                         
                         if new_duration >= TIME_FLAG:
@@ -326,11 +328,13 @@ def process_attendance(df, policy_df=None):
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
+                elif duration >= 15: 
+                    shift_type = 'Sự kiện đặc biệt'
 
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "Không có"
 
-            if shift_type in ['Thiếu log', 'Ca sáng thiếu log']:
+            if shift_type in ['Thiếu log', 'Ca sáng thiếu log', 'Thiếu FCI']:
                 if prev_day in group_by_date.groups:
                     prev_logs = group_by_date.get_group(prev_day)
                     prev_entries = [
@@ -342,7 +346,7 @@ def process_attendance(df, policy_df=None):
             records.append({
                 'ID': str(emp_id),
                 'Họ tên': name,
-                'Ngày chấm công': date_report.strftime('%Y-%m-%d'),
+                'Ngày chấm công': date_report.strftime('%d-%m-%Y'),
                 'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
                 'FCIStatus': fci_status,
                 'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
@@ -371,5 +375,8 @@ def process_attendance(df, policy_df=None):
     # Áp dụng điều chỉnh chính sách nếu có policy_df
     if policy_df is not None:
         df_result = apply_policy_adjustments(df_result, policy_df)
+
+    # Loại bỏ các dòng có NaN trong các cột quan trọng
+    df_result = remove_nan_rows(df_result)
 
     return df_result

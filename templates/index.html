@@ -14,7 +14,7 @@
 
     <form action="/" method="post" enctype="multipart/form-data">
         <label>File chấm công (CSV):</label>
-        <input type="file" name="file" accept=".csv" required><br><br>
+        <input type="file" name="file" accept=".csv, .xlsx" required><br><br>
 
         <label>File policy (Excel - xlsx):</label>
         <input type="file" name="policy_file" accept=".xlsx"><br><br>
@@ -42,6 +42,7 @@
                             <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
                             <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
                             <option value="Ca sáng thiếu log" {% if request.args.get('shift_type') == 'Ca sáng thiếu log' %}selected{% endif %}>Ca sáng thiếu log</option>
+                            <option value="Sự kiện đặc biệt" {% if request.args.get('shift_type') == 'Sự kiện đặc biệt' %}selected{% endif %}>Sự kiện đặc biệt</option>
                     </select>
                 </div>
             <input type="submit" value="Lọc dữ liệu">
@@ -51,6 +52,9 @@
             <!-- Nút download Excel -->
             <form method="post" action="/download" id="download-form" style="margin-bottom: 0;">
                 <input type="hidden" name="visible_columns" id="visible-columns">
+                {% for shift in request.args.getlist('shift_type[]') %}
+                    <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
                 <input type="submit" value="Tải kết quả Excel">
             </form>
 

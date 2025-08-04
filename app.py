@@ -17,6 +17,79 @@ app.config['CACHE_TYPE'] = 'SimpleCache'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60  # giữ cache 1 giờ
 cache = Cache(app)
 
+def sort_attendance_df(df):
+    df_regular = df[~df['ID'].astype(str).str.startswith('OUTSIDE_')].copy()
+    df_outside = df[df['ID'].astype(str).str.startswith('OUTSIDE_')].copy()
+
+    # Sắp theo ID số (đối với nhân viên thường)
+    df_regular['ID_sort'] = df_regular['ID'].astype(int)
+
+    # Sắp theo số sau OUTSIDE_ (ví dụ OUTSIDE_3 -> 3)
+    df_outside['ID_sort'] = df_outside['ID'].astype(str).str.extract(r'OUTSIDE_(\d+)').astype(int)
+
+    # Sắp theo ID_sort và Ngày chấm công
+    df_regular = df_regular.sort_values(by=['ID_sort', 'Ngày chấm công'])
+    df_outside = df_outside.sort_values(by=['ID_sort', 'Ngày chấm công'])
+
+    # Gộp lại, nhân viên thường trước
+    df_sorted = pd.concat([df_regular, df_outside], ignore_index=True)
+
+    return df_sorted.drop(columns=['ID_sort'])
+
+def filter_by_date(df, start_date=None, end_date=None):
+    """Lọc DataFrame theo khoảng ngày, hỗ trợ định dạng MM/dd/yyyy (HTML) và yyyy-mm-dd (GET)."""
+    if not start_date and not end_date:
+        return df
+
+    # Debug: In giá trị đầu vào và các giá trị trong Ngày chấm công
+    print(f"Filtering with start_date: {start_date}, end_date: {end_date}")
+    print(f"Ngày chấm công values: {df['Ngày chấm công'].unique()}")
+
+    # Chuyển đổi Ngày chấm công sang datetime
+    try:
+        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='%d/%m/%Y', dayfirst=True)
+    except Exception as e:
+        print(f"Error parsing Ngày chấm công: {e}")
+        # Thử parse với format='mixed' nếu định dạng không đồng nhất
+        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='mixed', dayfirst=True, errors='coerce')
+        if df['Ngày chấm công_dt'].isna().any():
+            print(f"Warning: Some Ngày chấm công values could not be parsed: {df[df['Ngày chấm công_dt'].isna()]['Ngày chấm công']}")
+            return df
+
+    # Danh sách định dạng ngày được hỗ trợ cho start_date và end_date
+    date_formats = ['%m/%d/%Y', '%Y-%m-%d']
+
+    # Lọc theo start_date
+    if start_date:
+        start_date_dt = None
+        for fmt in date_formats:
+            try:
+                start_date_dt = pd.to_datetime(start_date, format=fmt)
+                print(f"Parsed start_date: {start_date_dt} (format: {fmt})")
+                df = df[df['Ngày chấm công_dt'] >= start_date_dt]
+                break
+            except ValueError:
+                continue
+        if start_date_dt is None:
+            raise ValueError("Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng MM/dd/yyyy hoặc yyyy-mm-dd.")
+
+    # Lọc theo end_date
+    if end_date:
+        end_date_dt = None
+        for fmt in date_formats:
+            try:
+                end_date_dt = pd.to_datetime(end_date, format=fmt)
+                print(f"Parsed end_date: {end_date_dt} (format: {fmt})")
+                df = df[df['Ngày chấm công_dt'] <= end_date_dt]
+                break
+            except ValueError:
+                continue
+        if end_date_dt is None:
+            raise ValueError("Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng MM/dd/yyyy hoặc yyyy-mm-dd.")
+
+    # Xóa cột tạm
+    df = df.drop(columns=['Ngày chấm công_dt'])
+    return df
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -38,6 +111,8 @@ def index():
                 # Đọc file chấm công
                 if filename.endswith('.csv'):
                     df = pd.read_csv(filepath, encoding='utf-8-sig')
+                elif filename.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(filepath)
                 else:
                     df = pd.read_excel(filepath)
             except Exception as e:
@@ -83,28 +158,27 @@ def index():
         if name:
             df = df[df['Họ tên'].str.lower() == name]
 
-        # Filter by date range using string comparison
-        if start_date:
-            try:
-                # Validate date format
-                pd.to_datetime(start_date)  # Ensure valid date
-                df = df[df['Ngày chấm công'] >= start_date]
-            except ValueError:
-                return "Định dạng ngày bắt đầu không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
-        if end_date:
-            try:
-                pd.to_datetime(end_date)  # Ensure valid date
-                df = df[df['Ngày chấm công'] <= end_date]
-            except ValueError:
-                return "Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng yyyy-mm-dd."
-
-        result = df
+        # Lọc theo ngày sử dụng filter_by_date
+        try:
+            df = filter_by_date(df, start_date, end_date)
+        except ValueError as e:
+            return str(e)
 
         if msnv:
             total_seconds = int(df['Thời lượng (h)'].sum() * 3600)
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
             total_duration = f"{hours} giờ {minutes} phút"
+        
+        try:
+            df['ID_sort'] = df['ID'].apply(lambda x: int(str(x).split('_')[-1]) if 'OUTSIDE_' in str(x) else int(x))
+        except ValueError:
+            df['ID_sort'] = df['ID']  # fallback nếu có lỗi
+
+        df = df.sort_values(by=['ID_sort', 'Ngày chấm công']).drop(columns=['ID_sort'])
+
+        df = sort_attendance_df(df)
+        result = df
 
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
@@ -114,26 +188,67 @@ def index():
     )
 
 
-@app.route('/download', methods=['POST'])
+@app.route('/download', methods=['GET', 'POST'])
 def download_excel():
-    visible_cols_str = request.form.get('visible_columns', '')
-    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
-
+    # Lấy dữ liệu
     df = cache.get('attendance_data')
     if df is None:
         return "Không có dữ liệu để tải.", 400
 
-    # Lấy đúng thứ tự cột như hiển thị HTML
-    full_columns = df.columns.tolist()
+    # Xử lý nguồn dữ liệu đầu vào
+    if request.method == 'POST':
+        visible_cols_str = request.form.get('visible_columns', '')
+        shift_types = request.form.getlist('shift_type[]')
+        employee_id = request.form.get('employee_id', '').strip()
+        name = request.form.get('name', '').strip().lower()
+    else:  # GET
+        visible_cols_str = request.args.get('visible_columns', '')
+        shift_types = request.args.getlist('shift_type[]')
+        employee_id = request.args.get('employee_id', '').strip()
+        name = request.args.get('name', '').strip().lower()
+
+    # Lọc dữ liệu nếu có shift_type hoặc ID
+    df_filtered = df.copy()
+
+    if shift_types:
+        df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
+
+    if employee_id:
+        df_filtered = df_filtered[df_filtered['ID'].astype(str) == employee_id]
+
+    # Tính thời lượng nếu có
+    if 'Thời lượng (h)' in df_filtered.columns:
+        df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
+
+    # Chọn cột cần export
+    visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
+    full_columns = df_filtered.columns.tolist()
     selected_columns = [full_columns[i] for i in visible_indices if i < len(full_columns)]
+    df_final = df_filtered[selected_columns] if selected_columns else df_filtered
 
-    df_filtered = df[selected_columns]
+    # Tính tổng thời lượng (nếu lọc theo ID)
+    total_duration = None
+    if employee_id and 'Thời lượng (h)' in df_filtered.columns:
+        total_seconds = int(df_filtered['Thời lượng (h)'].sum() * 3600)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        total_duration = f"{hours} giờ {minutes} phút"
 
+    # Thêm dòng tổng
+    if total_duration and 'Thời lượng' in df_final.columns:
+        total_row = pd.DataFrame(
+            [['Tổng thời lượng', total_duration]],
+            columns=[df_final.columns[0], df_final.columns[-1]]
+        )
+        df_final = pd.concat([df_final, total_row], ignore_index=True)
+
+    # Xuất file Excel
     output = BytesIO()
-    df_filtered.to_excel(output, index=False)
+    df_final.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name='ket_qua_loc.xlsx', as_attachment=True)
+    file_name = (employee_id + name if employee_id else "ket_qua_loc") + '.xlsx'
+    return send_file(output, download_name=file_name, as_attachment=True)
 
 
 @app.route('/download', methods=['GET'])
