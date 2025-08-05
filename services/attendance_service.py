@@ -307,6 +307,7 @@ def process_attendance(df, policy_df=None):
             else:
                 if 17 <= fci.hour and duration >= 17:
                     shift_type = 'Thông ca'
+
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
@@ -328,7 +329,7 @@ def process_attendance(df, policy_df=None):
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
-                elif duration >= 15: 
+                elif duration >= 14: 
                     shift_type = 'Sự kiện đặc biệt'
 
             prev_day = date_report - timedelta(days=1)
@@ -346,7 +347,7 @@ def process_attendance(df, policy_df=None):
             records.append({
                 'ID': str(emp_id),
                 'Họ tên': name,
-                'Ngày chấm công': date_report.strftime('%d-%m-%Y'),
+                'Ngày chấm công': date_report.strftime('%d/%m/%Y'),
                 'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
                 'FCIStatus': fci_status,
                 'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
@@ -371,6 +372,9 @@ def process_attendance(df, policy_df=None):
         'Log hôm trước', 'Ghi chú'
     ]]
     df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
+
+    # Loại bỏ các dòng trùng lặp 100% dựa trên các cột quan trọng
+    df_result = df_result.drop_duplicates(subset=['ID', 'Ngày chấm công', 'FirstCheckIn', 'LastCheckOut', 'Loại ca'], keep='first')
 
     # Áp dụng điều chỉnh chính sách nếu có policy_df
     if policy_df is not None:

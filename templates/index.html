@@ -85,7 +85,45 @@
             <label><input type="checkbox" class="toggle-col" data-col="13" checked> Ghi chú</label>
             <label><input type="checkbox" class="toggle-col" data-col="14" checked> Đi trễ/Về sớm</label>
         </div>
+        
+        {% if late_employees or missing_employees %}
+            <div class="employee-lists">
+                <h2>Danh sách nhân sự</h2>
+                {% if late_employees %}
+                <div>
+                    <strong>Nhân sự đi trễ:</strong>
+                    <ul>
+                        {% for name in late_employees %}
+                        <li>{{ name }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if missing_employees %}
+                <div>
+                    <strong>Nhân sự quét thiếu:</strong>
+                    <ul>
+                        {% for name in missing_employees %}
+                        <li>{{ name }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        {% endif %}
 
+        {% if stats %}
+            <div class="stats-box">
+                <h2>Thống kê</h2>
+                <ul>
+                    <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
+                    <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
+                    <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
+                    <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
+                </ul>
+            </div>
+        {% endif %}
+        
         <div class="dataframe-container">
             <table class="dataframe">
                 <thead>
@@ -111,6 +149,7 @@
                 Tổng thời lượng làm việc của nhân sự: {{ total_duration }}
             </div>
         {% endif %}
+
     </div>
     {% endif %}
 

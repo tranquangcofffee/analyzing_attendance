@@ -39,7 +39,7 @@ def sort_attendance_df(df):
 def filter_by_date(df, start_date=None, end_date=None):
     """Lọc DataFrame theo khoảng ngày, hỗ trợ định dạng MM/dd/yyyy (HTML) và yyyy-mm-dd (GET)."""
     if not start_date and not end_date:
-        return df
+        return df, {}
 
     # Debug: In giá trị đầu vào và các giá trị trong Ngày chấm công
     print(f"Filtering with start_date: {start_date}, end_date: {end_date}")
@@ -50,11 +50,10 @@ def filter_by_date(df, start_date=None, end_date=None):
         df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='%d/%m/%Y', dayfirst=True)
     except Exception as e:
         print(f"Error parsing Ngày chấm công: {e}")
-        # Thử parse với format='mixed' nếu định dạng không đồng nhất
-        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], format='mixed', dayfirst=True, errors='coerce')
+        df['Ngày chấm công_dt'] = pd.to_datetime(df['Ngày chấm công'], errors='coerce')
         if df['Ngày chấm công_dt'].isna().any():
             print(f"Warning: Some Ngày chấm công values could not be parsed: {df[df['Ngày chấm công_dt'].isna()]['Ngày chấm công']}")
-            return df
+            return df, {}
 
     # Danh sách định dạng ngày được hỗ trợ cho start_date và end_date
     date_formats = ['%m/%d/%Y', '%Y-%m-%d']
@@ -87,14 +86,25 @@ def filter_by_date(df, start_date=None, end_date=None):
         if end_date_dt is None:
             raise ValueError("Định dạng ngày kết thúc không hợp lệ. Vui lòng nhập theo định dạng MM/dd/yyyy hoặc yyyy-mm-dd.")
 
+    # Tính toán thống kê
+    stats = {
+        'total_late': df['Đi trễ/Về sớm'].str.contains('Đi trễ').sum(),
+        'total_early': df['Đi trễ/Về sớm'].str.contains('Về sớm').sum(),
+        'total_on_time': (df['Đi trễ/Về sớm'] == 'Đúng giờ').sum(),
+        'total_missing': df['Đi trễ/Về sớm'].str.contains('Thiếu').sum()
+    }
+
     # Xóa cột tạm
     df = df.drop(columns=['Ngày chấm công_dt'])
-    return df
+    return df, stats
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     result = None
     total_duration = None  # Khởi tạo ngoài để tránh lỗi khi không có dữ liệu
+    stats = {}  # Thống kê đi trễ, về sớm, đúng giờ, thiếu log
+    late_employees = []  # Danh sách nhân sự đi trễ
+    missing_employees = []  # Danh sách nhân sự quét thiếu
 
     if request.method == 'POST':
         file = request.files['file']
@@ -160,7 +170,7 @@ def index():
 
         # Lọc theo ngày sử dụng filter_by_date
         try:
-            df = filter_by_date(df, start_date, end_date)
+            df, stats = filter_by_date(df, start_date, end_date)
         except ValueError as e:
             return str(e)
 
@@ -169,7 +179,7 @@ def index():
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
             total_duration = f"{hours} giờ {minutes} phút"
-        
+
         try:
             df['ID_sort'] = df['ID'].apply(lambda x: int(str(x).split('_')[-1]) if 'OUTSIDE_' in str(x) else int(x))
         except ValueError:
@@ -180,11 +190,18 @@ def index():
         df = sort_attendance_df(df)
         result = df
 
+        # Lọc ra danh sách nhân sự đi trễ và quét thiếu
+        late_employees = df[df['Đi trễ/Về sớm'].str.contains('Đi trễ', na=False)]['Họ tên'].unique().tolist()
+        missing_employees = df[df['Đi trễ/Về sớm'].str.contains('Thiếu', na=False)]['Họ tên'].unique().tolist()
+
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
         titles=result.columns.values if result is not None else None,
         result=result if result is not None else pd.DataFrame(),
-        total_duration=total_duration if result is not None else None
+        total_duration=total_duration if result is not None else None,
+        stats=stats,
+        late_employees=late_employees,
+        missing_employees=missing_employees
     )
 
 
