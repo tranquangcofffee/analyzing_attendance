@@ -75,9 +75,9 @@
             <label><input type="checkbox" class="toggle-col" data-col="3" checked> Giờ vào</label>
             <label><input type="checkbox" class="toggle-col" data-col="4" checked> Giờ ra</label>
             <label><input type="checkbox" class="toggle-col" data-col="5" checked> First Check In</label>
-            <label><input type="checkbox" class="toggle-col" data-col="6" checked> Trạng thái FCI</label>
+            <label><input type="checkbox" class="toggle-col" data-col="6" checked> FCI (giờ)</label>
             <label><input type="checkbox" class="toggle-col" data-col="7" checked> Last Check Out</label>
-            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Trạng thái LCO</label>
+            <label><input type="checkbox" class="toggle-col" data-col="8" checked> LCO (giờ)</label>
             <label><input type="checkbox" class="toggle-col" data-col="9" checked> Thời lượng (theo giờ)</label>
             <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
             <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
@@ -85,41 +85,50 @@
             <label><input type="checkbox" class="toggle-col" data-col="13" checked> Ghi chú</label>
             <label><input type="checkbox" class="toggle-col" data-col="14" checked> Đi trễ/Về sớm</label>
         </div>
-        
+
         {% if late_employees or missing_employees %}
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
                 <div style="display: flex; gap: 20px;">
-                    <div>
-                        <strong>Nhân sự đi trễ:</strong>
-                        <ul>
-                            {% for name in late_employees %}
-                            <li>{{ name }}</li>
-                            {% endfor %}
-                        </ul>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #007BFF; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('late-employees')">Nhân sự đi trễ</button>
+                        <div id="late-employees" style="display: none; margin-top: 10px;">
+                            <strong>Nhân sự đi trễ:</strong>
+                            <ul>
+                                {% for name in late_employees %}
+                                <li>{{ name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
 
-                    <div>
-                        <strong>Nhân sự về sớm:</strong>
-                        <ul>
-                            {% for name in early_employees %}
-                            <li>{{ name }}</li>
-                            {% endfor %}
-                        </ul>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #28A745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('early-employees')">Nhân sự về sớm</button>
+                        <div id="early-employees" style="display: none; margin-top: 10px;">
+                            <strong>Nhân sự về sớm:</strong>
+                            <ul>
+                                {% for name in early_employees %}
+                                <li>{{ name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
 
                     {% if stats %}
-                    <div class="stats-box">
-                        <strong>Thống kê</strong>
-                        <ul>
-                            <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
-                            <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
-                            <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
-                            <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
-                            <li><strong>Tổng thời gian đi trễ:</strong> {{ stats['total_late_duration'] }}</li>
-                            <li><strong>Tổng thời gian về sớm:</strong> {{ stats['total_early_duration'] }}</li>
-                        </ul>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #FFC107; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('stats-box')">Thống kê</button>
+                        <div id="stats-box" style="display: none; margin-top: 10px;">
+                            <strong>Thống kê</strong>
+                            <ul>
+                                <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
+                                <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
+                                <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
+                                <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
+                                <li><strong>Tổng thời gian đi trễ:</strong> {{ stats['total_late_duration'] }}</li>
+                                <li><strong>Tổng thời gian về sớm:</strong> {{ stats['total_early_duration'] }}</li>
+                            </ul>
+                        </div>
                     </div>
                     {% endif %}
                 </div>
@@ -167,6 +176,16 @@
     {% endif %}
 
     <script src="{{ url_for('static', filename='toggle_columns.js') }}"></script>
+    <script>
+        function toggleVisibility(id) {
+            const element = document.getElementById(id);
+            if (element.style.display === "none") {
+                element.style.display = "block";
+            } else {
+                element.style.display = "none";
+            }
+        }
+    </script>
 
 </body>
 </html>

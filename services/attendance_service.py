@@ -14,6 +14,13 @@ POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
 POLICY_IS_NOT_EXIST = 'Chính sách không tồn tại cho nhân sự {0}'
 #endregion
 
+def extract_time_only(x):
+    try:
+        dt = pd.to_datetime(x, format='%d/%m - %H:%M:%S', errors='coerce')
+        return dt.strftime('%H:%M:%S') if not pd.isna(dt) else 'Không có'
+    except:
+        return 'Không có'
+
 def parse_timestamp(ts):
     try:
         return datetime.strptime(str(ts), "%Y%m%d%H%M%S")
@@ -355,9 +362,9 @@ def process_attendance(df, policy_df=None):
                 'Họ tên': name,
                 'Ngày chấm công': date_report.strftime('%d/%m/%Y'),
                 'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
-                'FCIStatus': fci_status,
+                #'FCIStatus': fci_status,
                 'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
-                'LCOStatus': lco_status,
+                #'LCOStatus': lco_status,
                 'Giờ vào': fci.strftime('%d/%m - %H:%M:%S'),
                 'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
                 'Thời lượng (h)': round(duration, 2),
@@ -371,11 +378,18 @@ def process_attendance(df, policy_df=None):
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
     df_result = pd.DataFrame(records)
+
+    df_result['FCI (giờ)'] = df_result['FirstCheckIn'].apply(extract_time_only)
+    df_result['LCO (giờ)'] = df_result['LastCheckOut'].apply(extract_time_only)
+
     df_result['Ghi chú'] = ""
     df_result = df_result[[
-        'ID', 'Họ tên', 'Ngày chấm công', 'Giờ vào', 'Giờ ra', 'FirstCheckIn', 'FCIStatus',
-        'LastCheckOut', 'LCOStatus', 'Thời lượng (h)', 'Thời lượng', 'Loại ca',
-        'Log hôm trước', 'Ghi chú'
+        'ID', 'Họ tên', 'Ngày chấm công',
+        'Giờ vào', 'Giờ ra',
+        'FirstCheckIn', 'FCI (giờ)',
+        'LastCheckOut', 'LCO (giờ)',
+        'Thời lượng (h)', 'Thời lượng', 'Loại ca',
+        'Ghi chú'
     ]]
     df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
 
