@@ -373,6 +373,9 @@ def process_attendance(df, policy_df=None):
     ]]
     df_result.sort_values(by='ID', key=lambda x: x.map(natural_sort_key), inplace=True)
 
+    # Loại bỏ các dòng trùng lặp 100% dựa trên các cột quan trọng
+    df_result = df_result.drop_duplicates(subset=['ID', 'Ngày chấm công', 'FirstCheckIn', 'LastCheckOut', 'Loại ca'], keep='first')
+
     # Áp dụng điều chỉnh chính sách nếu có policy_df
     if policy_df is not None:
         df_result = apply_policy_adjustments(df_result, policy_df)
