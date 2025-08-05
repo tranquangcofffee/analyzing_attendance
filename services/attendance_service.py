@@ -117,6 +117,10 @@ def apply_policy_adjustments(df_result, policy_df):
     # Thêm cột mới cho đi trễ/về sớm
     df_result['Đi trễ/Về sớm'] = ""
 
+    # Khởi tạo tổng thời gian đi trễ và về sớm
+    total_late_duration = 0  # Tổng phút đi trễ
+    total_early_duration = 0  # Tổng phút về sớm
+
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
         if emp_id not in policy_map:
@@ -214,6 +218,7 @@ def apply_policy_adjustments(df_result, policy_df):
                 late_minutes = (fci - shift_start_with_tol).total_seconds() / 60
                 if late_minutes > 0:
                     status.append(f"Đi trễ {int(late_minutes)} phút")
+                    total_late_duration += late_minutes  # Cộng dồn thời gian đi trễ
 
             # Tính về sớm với dung sai
             shift_end_with_tol = shift_end - timedelta(minutes=early_tolerance)
@@ -221,6 +226,7 @@ def apply_policy_adjustments(df_result, policy_df):
                 early_minutes = (shift_end_with_tol - lco).total_seconds() / 60
                 if early_minutes > 0 and early_minutes < 1440:
                     status.append(f"Về sớm {int(early_minutes)} phút")
+                    total_early_duration += early_minutes  # Cộng dồn thời gian về sớm
 
         # Ghi trạng thái đi trễ/về sớm
         df_result.at[idx, 'Đi trễ/Về sớm'] = ", ".join(status) if status else "Đúng giờ"

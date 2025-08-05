@@ -90,13 +90,38 @@
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
-                <div>
-                    <strong>Nhân sự đi trễ:</strong>
-                    <ul>
-                        {% for name in late_employees %}
-                        <li>{{ name }}</li>
-                        {% endfor %}
-                    </ul>
+                <div style="display: flex; gap: 20px;">
+                    <div>
+                        <strong>Nhân sự đi trễ:</strong>
+                        <ul>
+                            {% for name in late_employees %}
+                            <li>{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <strong>Nhân sự về sớm:</strong>
+                        <ul>
+                            {% for name in early_employees %}
+                            <li>{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    {% if stats %}
+                    <div class="stats-box">
+                        <strong>Thống kê</strong>
+                        <ul>
+                            <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
+                            <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
+                            <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
+                            <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
+                            <li><strong>Tổng thời gian đi trễ:</strong> {{ stats['total_late_duration'] }}</li>
+                            <li><strong>Tổng thời gian về sớm:</strong> {{ stats['total_early_duration'] }}</li>
+                        </ul>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
                 {% if missing_employees %}
@@ -109,18 +134,6 @@
                     </ul>
                 </div>
                 {% endif %}
-            </div>
-        {% endif %}
-
-        {% if stats %}
-            <div class="stats-box">
-                <h2>Thống kê</h2>
-                <ul>
-                    <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
-                    <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
-                    <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
-                    <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
-                </ul>
             </div>
         {% endif %}
         

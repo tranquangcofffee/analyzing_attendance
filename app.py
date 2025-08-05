@@ -105,6 +105,7 @@ def index():
     stats = {}  # Thống kê đi trễ, về sớm, đúng giờ, thiếu log
     late_employees = []  # Danh sách nhân sự đi trễ
     missing_employees = []  # Danh sách nhân sự quét thiếu
+    early_employees = []  # Danh sách nhân sự về sớm
 
     if request.method == 'POST':
         file = request.files['file']
@@ -190,9 +191,45 @@ def index():
         df = sort_attendance_df(df)
         result = df
 
-        # Lọc ra danh sách nhân sự đi trễ và quét thiếu
+        # Lọc ra danh sách nhân sự đi trễ, về sớm và quét thiếu
         late_employees = df[df['Đi trễ/Về sớm'].str.contains('Đi trễ', na=False)]['Họ tên'].unique().tolist()
+        early_employees = df[df['Đi trễ/Về sớm'].str.contains('Về sớm', na=False)]['Họ tên'].unique().tolist()
         missing_employees = df[df['Đi trễ/Về sớm'].str.contains('Thiếu', na=False)]['Họ tên'].unique().tolist()
+
+        # Tính tổng thời gian đi trễ và về sớm từ cột 'Đi trễ/Về sớm'
+        total_late_minutes = 0
+        total_early_minutes = 0
+
+        for index, row in df.iterrows():
+            status = row['Đi trễ/Về sớm']
+            if pd.notna(status) and status != "Đúng giờ":
+                # Tách các trạng thái (Đi trễ, Về sớm)
+                statuses = status.split(', ')
+                for s in statuses:
+                    if 'Đi trễ' in s:
+                        minutes = int(s.replace('Đi trễ ', '').replace(' phút', ''))
+                        total_late_minutes += minutes
+                    elif 'Về sớm' in s:
+                        minutes = int(s.replace('Về sớm ', '').replace(' phút', ''))
+                        total_early_minutes += minutes
+
+        # Chuyển đổi tổng thời gian thành định dạng giờ:phút
+        total_late_hours = total_late_minutes // 60
+        total_late_minutes_rem = total_late_minutes % 60
+        total_early_hours = total_early_minutes // 60
+        total_early_minutes_rem = total_early_minutes % 60
+        total_late_duration = f"{total_late_hours} giờ {total_late_minutes_rem} phút" if total_late_minutes > 0 else "0 phút"
+        total_early_duration = f"{total_early_hours} giờ {total_early_minutes_rem} phút" if total_early_minutes > 0 else "0 phút"
+
+        # Cập nhật thống kê
+        stats.update({
+            'total_late': len(late_employees),
+            'total_early': len(early_employees),
+            'total_missing': len(missing_employees),
+            'total_on_time': len(df) - len(late_employees) - len(early_employees) - len(missing_employees),
+            'total_late_duration': total_late_duration,
+            'total_early_duration': total_early_duration
+        })
 
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
@@ -201,7 +238,8 @@ def index():
         total_duration=total_duration if result is not None else None,
         stats=stats,
         late_employees=late_employees,
-        missing_employees=missing_employees
+        missing_employees=missing_employees,
+        early_employees=early_employees if early_employees else [],
     )
 
 
@@ -218,13 +256,17 @@ def download_excel():
         shift_types = request.form.getlist('shift_type[]')
         employee_id = request.form.get('employee_id', '').strip()
         name = request.form.get('name', '').strip().lower()
+        start_date = request.form.get('start_date', '').strip()  # Thêm start_date
+        end_date = request.form.get('end_date', '').strip()      # Thêm end_date
     else:  # GET
         visible_cols_str = request.args.get('visible_columns', '')
         shift_types = request.args.getlist('shift_type[]')
         employee_id = request.args.get('employee_id', '').strip()
         name = request.args.get('name', '').strip().lower()
+        start_date = request.args.get('start_date', '').strip()  # Thêm start_date
+        end_date = request.args.get('end_date', '').strip()      # Thêm end_date
 
-    # Lọc dữ liệu nếu có shift_type hoặc ID
+    # Lọc dữ liệu nếu có shift_type, ID hoặc ngày
     df_filtered = df.copy()
 
     if shift_types:
@@ -232,6 +274,35 @@ def download_excel():
 
     if employee_id:
         df_filtered = df_filtered[df_filtered['ID'].astype(str) == employee_id]
+
+    # Lọc theo ngày nếu có start_date và end_date
+    if start_date or end_date:
+        # Chuyển cột 'Ngày chấm công' sang datetime nếu chưa phải
+        df_filtered['Ngày chấm công'] = pd.to_datetime(df_filtered['Ngày chấm công'], format='%d/%m/%Y', errors='coerce')
+        
+        # Xử lý start_date và end_date
+        if start_date:
+            start_date = pd.to_datetime(start_date, format='%Y-%m-%d', errors='coerce').replace(hour=0, minute=0, second=0)
+        if end_date:
+            end_date = pd.to_datetime(end_date, format='%Y-%m-%d', errors='coerce')
+            if start_date and end_date == start_date:  # Nếu cùng ngày, mở rộng end_date
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+            else:
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+        
+        # Áp dụng lọc
+        mask = pd.Series(True, index=df_filtered.index)
+        if start_date and end_date:
+            mask = (df_filtered['Ngày chấm công'] >= start_date) & (df_filtered['Ngày chấm công'] <= end_date)
+        elif start_date:
+            mask = df_filtered['Ngày chấm công'] >= start_date
+        elif end_date:
+            mask = df_filtered['Ngày chấm công'] <= end_date
+        df_filtered = df_filtered[mask]
+
+    # Kiểm tra nếu không có dữ liệu sau khi lọc
+    if df_filtered.empty:
+        return "Không có dữ liệu cho khoảng ngày được chọn.", 400
 
     # Tính thời lượng nếu có
     if 'Thời lượng (h)' in df_filtered.columns:
@@ -266,7 +337,6 @@ def download_excel():
 
     file_name = (employee_id + name if employee_id else "ket_qua_loc") + '.xlsx'
     return send_file(output, download_name=file_name, as_attachment=True)
-
 
 @app.route('/download', methods=['GET'])
 def download_filtered_excel():
