@@ -6,6 +6,10 @@ import pandas as pd
 from services.attendance_service import process_attendance, format_duration
 from services.excel_service import save_excel, get_excel_path
 from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.styles import NamedStyle
+from io import BytesIO
+import re
 
 app = Flask(__name__)
 df_result = pd.DataFrame()
@@ -304,6 +308,23 @@ def download_excel():
     if df_filtered.empty:
         return "Không có dữ liệu cho khoảng ngày được chọn.", 400
 
+    # Sắp xếp theo ID (ID dạng số trước, ID chứa OUTSIDE cuối) và Ngày chấm công
+    if 'ID' in df_filtered.columns and 'Ngày chấm công' in df_filtered.columns:
+        # Hàm trích xuất phần số từ ID
+        def extract_number(id_str):
+            if isinstance(id_str, str) and 'OUTSIDE' in id_str.upper():
+                return float('inf')  # Đặt OUTSIDE xuống cuối
+            try:
+                return int(id_str)  # Thử chuyển thành số
+            except (ValueError, TypeError):
+                return float('inf')  # Nếu không phải số, đặt xuống cuối
+
+        # Tạo cột tạm cho sắp xếp
+        df_filtered['ID_number'] = df_filtered['ID'].apply(extract_number)
+        df_filtered['ID_is_outside'] = df_filtered['ID'].apply(lambda x: isinstance(x, str) and 'OUTSIDE' in x.upper())
+        df_filtered = df_filtered.sort_values(by=['ID_is_outside', 'ID_number', 'ID', 'Ngày chấm công'], ascending=[True, True, True, True])
+        df_filtered = df_filtered.drop(columns=['ID_number', 'ID_is_outside'])  # Xóa cột tạm
+
     # Tính thời lượng nếu có
     if 'Thời lượng (h)' in df_filtered.columns:
         df_filtered['Thời lượng'] = df_filtered['Thời lượng (h)'].apply(format_duration)
@@ -330,11 +351,23 @@ def download_excel():
         )
         df_final = pd.concat([df_final, total_row], ignore_index=True)
 
-    # Xuất file Excel
+    # Xuất file Excel với định dạng ngày
     output = BytesIO()
-    df_final.to_excel(output, index=False)
-    output.seek(0)
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_final.to_excel(writer, index=False, sheet_name='Sheet1')
+        # Lấy workbook và worksheet
+        workbook = writer.book
+        worksheet = writer.sheets['Sheet1']
+        
+        # Định dạng cột ngày
+        date_style = NamedStyle(name='date_style', number_format='DD/MM/YYYY')
+        if 'Ngày chấm công' in df_final.columns:
+            col_idx = df_final.columns.get_loc('Ngày chấm công') + 1  # +1 vì Excel bắt đầu từ 1
+            for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row, min_col=col_idx, max_col=col_idx):
+                for cell in row:
+                    cell.style = date_style
 
+    output.seek(0)
     file_name = (employee_id + name if employee_id else "ket_qua_loc") + '.xlsx'
     return send_file(output, download_name=file_name, as_attachment=True)
 
