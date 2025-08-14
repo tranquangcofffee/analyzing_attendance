@@ -18,7 +18,7 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CACHE_TYPE'] = 'SimpleCache'
-app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60  # giữ cache 1 giờ
+app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60 * 3 # giữ cache 1 giờ
 cache = Cache(app)
 
 def sort_attendance_df(df):
@@ -179,7 +179,7 @@ def index():
         except ValueError as e:
             return str(e)
 
-        if msnv:
+        if msnv or name or start_date or end_date:
             total_seconds = int(df['Thời lượng (h)'].sum() * 3600)
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
@@ -195,10 +195,32 @@ def index():
         df = sort_attendance_df(df)
         result = df
 
+        # Khởi tạo biến đếm số lần
+        total_late = 0
+        total_early = 0
+        total_missing = 0
+        total_on_time = 0
+
+        # Duyệt qua từng hàng trong DataFrame
+        for index, row in df.iterrows():
+            status = row['Đi trễ/Về sớm']
+            if pd.notna(status):
+                # Tách các trạng thái (nếu có nhiều trạng thái trong cùng một ca)
+                statuses = status.split(', ')
+                for s in statuses:
+                    if 'Đi trễ' in s:
+                        total_late += 1
+                    elif 'Về sớm' in s:
+                        total_early += 1
+                    elif 'Thiếu log' in s:
+                        total_missing += 1
+                    elif 'Đúng giờ' in s:
+                        total_on_time += 1
+
         # Lọc ra danh sách nhân sự đi trễ, về sớm và quét thiếu
         late_employees = df[df['Đi trễ/Về sớm'].str.contains('Đi trễ', na=False)]['Họ tên'].unique().tolist()
         early_employees = df[df['Đi trễ/Về sớm'].str.contains('Về sớm', na=False)]['Họ tên'].unique().tolist()
-        missing_employees = df[df['Đi trễ/Về sớm'].str.contains('Thiếu', na=False)]['Họ tên'].unique().tolist()
+        missing_employees = df[df['Đi trễ/Về sớm'].str.contains('Thiếu log', na=False)]['Họ tên'].unique().tolist()
 
         # Tính tổng thời gian đi trễ và về sớm từ cột 'Đi trễ/Về sớm'
         total_late_minutes = 0
@@ -226,13 +248,23 @@ def index():
         total_early_duration = f"{total_early_hours} giờ {total_early_minutes_rem} phút" if total_early_minutes > 0 else "0 phút"
 
         # Cập nhật thống kê
+        # stats.update({
+        #     'total_late': len(late_employees),
+        #     'total_early': len(early_employees),
+        #     'total_missing': len(missing_employees),
+        #     'total_on_time': len(df) - len(late_employees) - len(early_employees) - len(missing_employees),
+        #     'total_late_duration': total_late_duration,
+        #     'total_early_duration': total_early_duration
+        # })
+
+        # Cập nhật stats
         stats.update({
-            'total_late': len(late_employees),
-            'total_early': len(early_employees),
-            'total_missing': len(missing_employees),
-            'total_on_time': len(df) - len(late_employees) - len(early_employees) - len(missing_employees),
-            'total_late_duration': total_late_duration,
-            'total_early_duration': total_early_duration
+            'total_late': total_late,  # Số lần đi trễ
+            'total_early': total_early,  # Số lần về sớm
+            'total_missing': total_missing,  # Số lần quét thiếu
+            'total_on_time': total_on_time,  # Số lần đúng giờ
+            'total_late_duration': total_late_duration,  # Giữ nguyên vì đã đúng
+            'total_early_duration': total_early_duration  # Giữ nguyên vì đã đúng
         })
 
     return render_template('index.html',
