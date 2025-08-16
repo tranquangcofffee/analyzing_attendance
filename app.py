@@ -226,18 +226,45 @@ def index():
         total_late_minutes = 0
         total_early_minutes = 0
 
+        # for index, row in df.iterrows():
+        #     status = row['Đi trễ/Về sớm']
+        #     if pd.notna(status) and status != "Đúng giờ":
+        #         # Tách các trạng thái (Đi trễ, Về sớm)
+        #         statuses = status.split(', ')
+        #         for s in statuses:
+        #             if 'Đi trễ' in s:
+        #                 minutes = int(s.replace('Đi trễ ', '').replace(' phút', ''))
+        #                 total_late_minutes += minutes
+        #             elif 'Về sớm' in s:
+        #                 minutes = int(s.replace('Về sớm ', '').replace(' phút', ''))
+        #                 total_early_minutes += minutes
+
+        # Làm sạch dữ liệu trước khi xử lý
+        df['Đi trễ/Về sớm'] = df['Đi trễ/Về sớm'].fillna('Đúng giờ').str.strip()
+
         for index, row in df.iterrows():
             status = row['Đi trễ/Về sớm']
-            if pd.notna(status) and status != "Đúng giờ":
-                # Tách các trạng thái (Đi trễ, Về sớm)
-                statuses = status.split(', ')
+            if pd.notna(status):  # Chỉ xử lý nếu status không phải NaN
+                # Tách các trạng thái, đảm bảo xử lý đúng khi không có dấu phẩy
+                statuses = status.split(', ') if ', ' in status else [status]
                 for s in statuses:
+                    s = s.strip()
                     if 'Đi trễ' in s:
-                        minutes = int(s.replace('Đi trễ ', '').replace(' phút', ''))
-                        total_late_minutes += minutes
+                        total_late += 1
+                        minutes_str = s.replace('Đi trễ ', '').replace(' phút', '').strip()
+                        if minutes_str.isdigit():
+                            minutes = int(minutes_str)
+                            total_late_minutes += minutes
                     elif 'Về sớm' in s:
-                        minutes = int(s.replace('Về sớm ', '').replace(' phút', ''))
-                        total_early_minutes += minutes
+                        total_early += 1
+                        minutes_str = s.replace('Về sớm ', '').replace(' phút', '').strip()
+                        if minutes_str.isdigit():
+                            minutes = int(minutes_str)
+                            total_early_minutes += minutes
+                    elif 'Thiếu' in s:
+                        total_missing += 1
+                    elif 'Đúng giờ' in s:
+                        total_on_time += 1
 
         # Chuyển đổi tổng thời gian thành định dạng giờ:phút
         total_late_hours = total_late_minutes // 60

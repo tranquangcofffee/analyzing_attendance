@@ -43,6 +43,7 @@
                             <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
                             <option value="Ca sáng thiếu log" {% if request.args.get('shift_type') == 'Ca sáng thiếu log' %}selected{% endif %}>Ca sáng thiếu log</option>
                             <option value="Sự kiện đặc biệt" {% if request.args.get('shift_type') == 'Sự kiện đặc biệt' %}selected{% endif %}>Sự kiện đặc biệt</option>
+                            <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
                     </select>
                 </div>
             <input type="submit" value="Lọc dữ liệu">

@@ -319,7 +319,98 @@ def process_attendance(df, policy_df=None):
                 shift_type = 'Thiếu log'
             else:
                 if 17 <= fci.hour and duration >= 17:
-                    shift_type = 'Thông ca'
+                    # Dòng 1: Giữ nguyên bản ghi với shift_type = 'Thông ca'
+                    record = {
+                        'ID': str(emp_id),
+                        'Họ tên': name,
+                        'Ngày chấm công': date_report.strftime('%d/%m/%Y'),
+                        'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
+                        'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
+                        'Giờ vào': fci.strftime('%d/%m - %H:%M:%S'),
+                        'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
+                        'Thời lượng (h)': round(duration, 2),
+                        'Thời lượng': format_duration(duration),
+                        'Loại ca': 'Thông ca',
+                        'Log hôm trước': "Không có"
+                    }
+                    records.append(record)
+
+                    # Ngày kế tiếp
+                    next_day = fci + timedelta(days=1)
+
+                    # Dòng 2: Từ fci đến 06:59:00 ngày kế tiếp (Ca đêm)
+                    night_end = next_day.replace(hour=6, minute=59, second=0, microsecond=0)
+                    if fci < night_end:
+                        night_duration = (night_end - fci).total_seconds() / 3600
+                        night_record = {
+                            'ID': str(emp_id),
+                            'Họ tên': name,
+                            'Ngày chấm công': date_report.strftime('%d/%m/%Y'),
+                            'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
+                            'LastCheckOut': night_end.strftime('%d/%m - %H:%M:%S'),
+                            'Giờ vào': fci.strftime('%d/%m - %H:%M:%S'),
+                            'Giờ ra': night_end.strftime('%d/%m - %H:%M:%S'),
+                            'Thời lượng (h)': round(night_duration, 2),
+                            'Thời lượng': format_duration(night_duration),
+                            'Loại ca': 'Ca đêm',
+                            'Log hôm trước': "Không có"
+                        }
+                        records.append(night_record)
+
+                    # Dòng 3: Từ 07:00:00 ngày kế tiếp đến lco (Ca ngày)
+                    day_start = next_day.replace(hour=7, minute=0, second=0, microsecond=0)
+                    if day_start < lco:
+                        day_duration = (lco - day_start).total_seconds() / 3600
+                        if day_duration > 0:  # Đảm bảo thời lượng dương
+                            day_record = {
+                                'ID': str(emp_id),
+                                'Họ tên': name,
+                                'Ngày chấm công': day_start.strftime('%d/%m/%Y'),  # Cập nhật ngày theo day_start
+                                'FirstCheckIn': day_start.strftime('%d/%m - %H:%M:%S'),
+                                'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
+                                'Giờ vào': day_start.strftime('%d/%m - %H:%M:%S'),
+                                'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
+                                'Thời lượng (h)': round(day_duration, 2),
+                                'Thời lượng': format_duration(day_duration),
+                                'Loại ca': 'Ca sáng',
+                                'Log hôm trước': "Không có"
+                            }
+                            records.append(day_record)
+
+                elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
+                    same_day_logs = group[group['date'] == fci.date()]
+                    morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
+                    morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
+                    
+                    if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
+                        earliest_fci = morning_fc_in['datetime'].min()
+                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 22]['datetime'].max()
+                        new_duration = (latest_lco - earliest_fci).total_seconds() / 3600 if pd.notna(latest_lco) else 0
+                        
+                        if new_duration >= TIME_FLAG:
+                            fci = earliest_fci
+                            lco = latest_lco
+                            duration = new_duration
+                            shift_type = 'Ca sáng'
+                        else:
+                            shift_type = 'Ca sáng'
+                    else:
+                        shift_type = 'Ca sáng'
+                    
+                    record = {
+                        'ID': str(emp_id),
+                        'Họ tên': name,
+                        'Ngày chấm công': date_report.strftime('%d/%m/%Y'),
+                        'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
+                        'LastCheckOut': lco.strftime('%d/%m - %H:%M:%S'),
+                        'Giờ vào': fci.strftime('%d/%m - %H:%M:%S'),
+                        'Giờ ra': lco.strftime('%d/%m - %H:%M:%S'),
+                        'Thời lượng (h)': round(duration, 2),
+                        'Thời lượng': format_duration(duration),
+                        'Loại ca': shift_type,
+                        'Log hôm trước': "Không có"
+                    }
+                    records.append(record)
 
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
@@ -338,12 +429,14 @@ def process_attendance(df, policy_df=None):
                             shift_type = 'Ca sáng'
                     else:
                         shift_type = 'Ca sáng'
+                elif 4 <= fci.hour <= 14 and lco.hour > 22:
+                    shift_type = 'Ca sáng tăng ca'
 
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
-                elif duration >= 14: 
-                    shift_type = 'Sự kiện đặc biệt'
+                    elif lco.hour > 10:
+                        shift_type = 'Ca đêm tăng ca'
 
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "Không có"
