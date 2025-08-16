@@ -70,7 +70,7 @@
         </div>
 
         <div style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
-            <label><input type="checkbox" class="toggle-col" data-col="0" checked> Mã số nhân viên (MSNV)</label>
+            <label><input type="checkbox" class="toggle-col" data-col="0" checked> MSNV</label>
             <label><input type="checkbox" class="toggle-col" data-col="1" checked> Họ tên</label>
             <label><input type="checkbox" class="toggle-col" data-col="2" checked> Ngày chấm công</label>
             <label><input type="checkbox" class="toggle-col" data-col="3" checked> Giờ vào</label>
@@ -85,9 +85,11 @@
             <!-- <label><input type="checkbox" class="toggle-col" data-col="12" checked> Log hôm trước</label> -->
             <label><input type="checkbox" class="toggle-col" data-col="12" checked> Ghi chú</label>
             <label><input type="checkbox" class="toggle-col" data-col="13" checked> Đi trễ/Về sớm</label>
+            <label><input type="checkbox" class="toggle-col" data-col="14" checked> Tổng đi trễ (phút)</label>
+            <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng về sớm (phút)</label>
         </div>
 
-        {% if late_employees or missing_employees %}
+        <!-- {% if late_employees or missing_employees %}
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
@@ -145,7 +147,7 @@
                 </div>
                 {% endif %}
             </div>
-        {% endif %}
+        {% endif %} -->
         
         <div class="dataframe-container">
             <table class="dataframe">

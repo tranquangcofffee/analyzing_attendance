@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import pandas as pd
 import re
+from math import floor
 
 #region # Constants and error messages
 TIME_FLAG = 4
@@ -107,6 +108,9 @@ def apply_policy_adjustments(df_result, policy_df):
     policy_df = policy_df.drop_duplicates(subset='ID')
     policy_map = policy_df.set_index('ID').to_dict('index')
 
+    # Khởi tạo từ điển để lưu tổng thời gian đi trễ và về sớm theo ID
+    late_early_summary = {}
+
     def parse_shift_time(date_ref, time_str):
         """Chuyển đổi chuỗi thời gian và kết hợp với ngày tham chiếu."""
         if pd.isna(time_str) or not isinstance(time_str, str) or time_str.strip() == '':
@@ -124,15 +128,14 @@ def apply_policy_adjustments(df_result, policy_df):
     # Thêm cột mới cho đi trễ/về sớm
     df_result['Đi trễ/Về sớm'] = ""
 
-    # Khởi tạo tổng thời gian đi trễ và về sớm
-    total_late_duration = 0  # Tổng phút đi trễ
-    total_early_duration = 0  # Tổng phút về sớm
-
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
+        if emp_id not in late_early_summary:
+            late_early_summary[emp_id] = {'total_late': 0, 'total_early': 0}
+
         if emp_id not in policy_map:
-            df_result.at[idx, 'Ghi chú'] = POLICY_IS_NOT_EXIST.format(emp_id)
-            df_result.at[idx, 'Đi trễ/Về sớm'] = POLICY_IS_NOT_EXIST
+            df_result.at[idx, 'Ghi chú'] = "Không tìm thấy chính sách cho ID {}".format(emp_id)
+            df_result.at[idx, 'Đi trễ/Về sớm'] = "Không có chính sách"
             continue
 
         policy = policy_map[emp_id]
@@ -148,18 +151,18 @@ def apply_policy_adjustments(df_result, policy_df):
             elif isinstance(date_ref, pd.Timestamp.date):
                 date_ref = pd.Timestamp(date_ref)
             else:
-                df_result.at[idx, 'Ghi chú'] = DAY_PARSE_ERROR
-                df_result.at[idx, 'Đi trễ/Về sớm'] = DAY_PARSE_ERROR
+                df_result.at[idx, 'Ghi chú'] = "Lỗi định dạng ngày"
+                df_result.at[idx, 'Đi trễ/Về sớm'] = "Lỗi định dạng ngày"
                 continue
         except Exception as e:
-            df_result.at[idx, 'Ghi chú'] = MISSING_SCAN_BIO
-            df_result.at[idx, 'Đi trễ/Về sớm'] = DAY_PARSE_ERROR
+            df_result.at[idx, 'Ghi chú'] = "Thiếu dữ liệu chấm công"
+            df_result.at[idx, 'Đi trễ/Về sớm'] = "Lỗi định dạng ngày"
             continue
 
         # Bỏ qua nếu là Thông ca
         if 'Thông ca' in shift_type:
-            df_result.at[idx, 'Ghi chú'] = THROUGH_SHIFT_PASSED
-            df_result.at[idx, 'Đi trễ/Về sớm'] = THROUGH_SHIFT
+            df_result.at[idx, 'Ghi chú'] = "Thông ca được bỏ qua"
+            df_result.at[idx, 'Đi trễ/Về sớm'] = "Thông ca"
             continue
 
         # Xác định thời gian bắt đầu và kết thúc dựa trên loại ca
@@ -177,7 +180,7 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         if not shift_start or not shift_end:
-            df_result.at[idx, 'Ghi chú'] = POLICY_IS_NOT_APPLICABLE
+            df_result.at[idx, 'Ghi chú'] = "Chính sách không áp dụng được"
             df_result.at[idx, 'Đi trễ/Về sớm'] = "Thời gian chính sách không hợp lệ"
             continue
 
@@ -222,18 +225,18 @@ def apply_policy_adjustments(df_result, policy_df):
             # Tính đi trễ với dung sai
             shift_start_with_tol = shift_start + timedelta(minutes=late_tolerance)
             if fci > shift_start_with_tol:
-                late_minutes = (fci - shift_start_with_tol).total_seconds() / 60
+                late_minutes = floor((fci - shift_start_with_tol).total_seconds() / 60)
                 if late_minutes > 0:
                     status.append(f"Đi trễ {int(late_minutes)} phút")
-                    total_late_duration += late_minutes  # Cộng dồn thời gian đi trễ
+                    late_early_summary[emp_id]['total_late'] += late_minutes
 
             # Tính về sớm với dung sai
             shift_end_with_tol = shift_end - timedelta(minutes=early_tolerance)
             if lco < shift_end_with_tol:
-                early_minutes = (shift_end_with_tol - lco).total_seconds() / 60
+                early_minutes = floor((shift_end_with_tol - lco).total_seconds() / 60)
                 if early_minutes > 0 and early_minutes < 1440:
                     status.append(f"Về sớm {int(early_minutes)} phút")
-                    total_early_duration += early_minutes  # Cộng dồn thời gian về sớm
+                    late_early_summary[emp_id]['total_early'] += early_minutes
 
         # Ghi trạng thái đi trễ/về sớm
         df_result.at[idx, 'Đi trễ/Về sớm'] = ", ".join(status) if status else "Đúng giờ"
@@ -249,7 +252,17 @@ def apply_policy_adjustments(df_result, policy_df):
         df_result.at[idx, 'Thời lượng (h)'] = round(final_duration, 2)
         df_result.at[idx, 'Thời lượng'] = format_duration(final_duration)
 
-    return df_result
+    # Tạo DataFrame tổng hợp đi trễ/về sớm
+    summary_data = []
+    for emp_id, summary in late_early_summary.items():
+        summary_data.append({
+            'ID': emp_id,
+            'Tổng đi trễ (phút)': floor(summary['total_late']),
+            'Tổng về sớm (phút)': floor(summary['total_early'])
+        })
+    summary_df = pd.DataFrame(summary_data)
+
+    return df_result, summary_df
 
 def process_attendance(df, policy_df=None):
     """Xử lý dữ liệu chấm công và áp dụng điều chỉnh chính sách."""
@@ -491,7 +504,17 @@ def process_attendance(df, policy_df=None):
 
     # Áp dụng điều chỉnh chính sách nếu có policy_df
     if policy_df is not None:
-        df_result = apply_policy_adjustments(df_result, policy_df)
+        df_result, summary_df = apply_policy_adjustments(df_result, policy_df)
+        # Gộp summary_df vào df_result để thêm cột tổng đi trễ/về sớm
+        df_result = df_result.merge(summary_df, on='ID', how='left')
+        # Điền giá trị 0 cho các nhân viên không có dữ liệu đi trễ/về sớm
+        # Áp dụng format_duration cho Tổng đi trễ (phút) và Tổng về sớm (phút)
+
+        # df_result['Tổng đi trễ (phút)'] = df_result['Tổng đi trễ (phút)'].fillna(0)
+        # df_result['Tổng về sớm (phút)'] = df_result['Tổng về sớm (phút)'].fillna(0)
+
+        df_result['Tổng đi trễ (phút)'] = df_result['Tổng đi trễ (phút)'].apply(lambda x: format_duration(x / 60))
+        df_result['Tổng về sớm (phút)'] = df_result['Tổng về sớm (phút)'].apply(lambda x: format_duration(x / 60))
 
     # Loại bỏ các dòng có NaN trong các cột quan trọng
     df_result = remove_nan_rows(df_result)
