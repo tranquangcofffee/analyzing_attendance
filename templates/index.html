@@ -27,26 +27,25 @@
     <div class="result-box">
         <h2>Kết quả phân ca</h2>
 
-        <form method="get" style="margin-bottom: 20px;">
-            <input type="text" name="msnv" placeholder="MSNV" value="{{ request.args.get('msnv', '') }}">
-            <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
-            <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
-            <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+        <form method="get" class="filter-row" style="margin-bottom: 20px;">
+            <div class="filter-flex">
+                <input type="text" name="msnv" placeholder="MSNV" value="{{ request.args.get('msnv', '') }}">
+                <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
+                <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
                 <div class="select-wrapper">
                     <label for="shift_type">Loại ca:</label>
                     <select multiple name="shift_type[]" id="shift_type">
-                        <option value="">-- Tất cả ca --</option>
-                            <option value="Ca sáng" {% if request.args.get('shift_type') == 'Ca sáng' %}selected{% endif %}>Ca sáng</option>
-                            <option value="Ca đêm" {% if request.args.get('shift_type') == 'Ca đêm' %}selected{% endif %}>Ca đêm</option>
-                            <option value="Thông ca" {% if request.args.get('shift_type') == 'Thông ca' %}selected{% endif %}>Thông ca</option>
-                            <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
-                            <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
-                            <option value="Ca sáng thiếu log" {% if request.args.get('shift_type') == 'Ca sáng thiếu log' %}selected{% endif %}>Ca sáng thiếu log</option>
-                            <option value="Sự kiện đặc biệt" {% if request.args.get('shift_type') == 'Sự kiện đặc biệt' %}selected{% endif %}>Sự kiện đặc biệt</option>
-                            <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
+                        <option value="Ca sáng" {% if request.args.get('shift_type') == 'Ca sáng' %}selected{% endif %}>Ca sáng</option>
+                        <option value="Ca đêm" {% if request.args.get('shift_type') == 'Ca đêm' %}selected{% endif %}>Ca đêm</option>
+                        <option value="Thông ca" {% if request.args.get('shift_type') == 'Thông ca' %}selected{% endif %}>Thông ca</option>
+                        <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
+                        <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
+                        <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
                     </select>
                 </div>
-            <input type="submit" value="Lọc dữ liệu">
+                <input type="submit" value="Lọc dữ liệu" class="btn-filter">
+            </div>
         </form>
 
         <div class="button-container">
@@ -69,27 +68,26 @@
             </form>
         </div>
 
-        <div style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
-            <label><input type="checkbox" class="toggle-col" data-col="0" checked> MSNV</label>
-            <label><input type="checkbox" class="toggle-col" data-col="1" checked> Họ tên</label>
-            <label><input type="checkbox" class="toggle-col" data-col="2" checked> Ngày chấm công</label>
-            <label><input type="checkbox" class="toggle-col" data-col="3" checked> Giờ vào</label>
-            <label><input type="checkbox" class="toggle-col" data-col="4" checked> Giờ ra</label>
-            <label><input type="checkbox" class="toggle-col" data-col="5" checked> First Check In</label>
-            <label><input type="checkbox" class="toggle-col" data-col="6" checked> FCI (giờ)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Last Check Out</label>
-            <label><input type="checkbox" class="toggle-col" data-col="8" checked> LCO (giờ)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Thời lượng (theo giờ)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
-            <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
-            <!-- <label><input type="checkbox" class="toggle-col" data-col="12" checked> Log hôm trước</label> -->
-            <label><input type="checkbox" class="toggle-col" data-col="12" checked> Ghi chú</label>
-            <label><input type="checkbox" class="toggle-col" data-col="13" checked> Đi trễ/Về sớm</label>
-            <label><input type="checkbox" class="toggle-col" data-col="14" checked> Tổng đi trễ (phút)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng về sớm (phút)</label>
-        </div>
+        <!-- <h3>Bù log thiếu</h3>
+        <form method="post" action="/add_log">
+            <input type="text" name="id" placeholder="ID nhân viên" required>
+            <input type="datetime-local" name="datetime" required>
+            <select name="key">
+                <option value="Vào">Vào</option>
+                <option value="Ra">Ra</option>
+            </select>
+            <input type="submit" value="Thêm log bù">
+        </form>
 
-        <!-- {% if late_employees or missing_employees %}
+        {% if error %}
+            <div style="color: red; font-weight: bold; margin-bottom: 20px;">
+                {{ error }}
+            </div>
+        {% endif %} -->
+
+        <div class="top-flex-row">
+
+            {% if late_employees or missing_employees %}
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
@@ -147,7 +145,31 @@
                 </div>
                 {% endif %}
             </div>
-        {% endif %} -->
+            {% endif %}
+
+            <div class="column-toggle-box">
+                <div class="column-toggle-title">Ẩn/hiện cột</div>
+                <div class="column-toggle-list">
+                    <label><input type="checkbox" class="toggle-col" data-col="0" checked> MSNV</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="1" checked> Họ tên</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="2" checked> Ngày chấm công</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="3" checked> Giờ vào</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="4" checked> Giờ ra</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="5" checked> First Check In</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="6" checked> FCI (giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="7" checked> Last Check Out</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="8" checked> LCO (giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="9" checked> Thời lượng (theo giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="12" checked> Ghi chú</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="13" checked> Đi trễ/Về sớm</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="14" checked> Tổng đi trễ (phút)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng về sớm (phút)</label>
+                </div>
+            </div>
+
+        </div>
         
         <div class="dataframe-container">
             <table class="dataframe">

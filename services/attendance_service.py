@@ -238,16 +238,51 @@ def apply_policy_adjustments(df_result, policy_df):
                     status.append(f"Về sớm {int(early_minutes)} phút")
                     late_early_summary[emp_id]['total_early'] += early_minutes
 
-        # Ghi trạng thái đi trễ/về sớm
-        df_result.at[idx, 'Đi trễ/Về sớm'] = ", ".join(status) if status else "Đúng giờ"
+        # Logic đặc biệt cho ID 6 và 37
+        if emp_id in ['6', '37']:
+            total_late_early = late_minutes + early_minutes
+            if total_late_early <= 60:
+                status = []
+                df_result.at[idx, 'Đi trễ/Về sớm'] = "Đúng giờ"
+                df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + " (Tổng đi trễ/về sớm <= 60 phút, xét đúng giờ)"
+                late_early_summary[emp_id]['total_late'] -= late_minutes
+                late_early_summary[emp_id]['total_early'] -= early_minutes
+            else:
+                # Trừ 60 phút và phân bổ theo tỷ lệ
+                excess_minutes = total_late_early - 60
+                late_ratio = late_minutes / total_late_early if total_late_early > 0 else 0
+                early_ratio = early_minutes / total_late_early if total_late_early > 0 else 0
+                adjusted_late = floor(excess_minutes * late_ratio)
+                adjusted_early = floor(excess_minutes * early_ratio)
+
+                # Cập nhật lại summary
+                late_early_summary[emp_id]['total_late'] -= late_minutes
+                late_early_summary[emp_id]['total_early'] -= early_minutes
+                late_early_summary[emp_id]['total_late'] += adjusted_late
+                late_early_summary[emp_id]['total_early'] += adjusted_early
+
+                # Cập nhật trạng thái
+                status = []
+                if adjusted_late > 0:
+                    status.append(f"Đi trễ {int(adjusted_late)} phút")
+                if adjusted_early > 0:
+                    status.append(f"Về sớm {int(adjusted_early)} phút")
+                df_result.at[idx, 'Đi trễ/Về sớm'] = ", ".join(status) if status else "Đúng giờ"
+                df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + f" (Tổng đi trễ/về sớm {int(total_late_early)} phút, trừ 60 phút, còn {int(excess_minutes)} phút)"
+        else:
+            df_result.at[idx, 'Đi trễ/Về sớm'] = ", ".join(status) if status else "Đúng giờ"
 
         # Chọn thời lượng hợp lý
-        if duration_1 > duration_2:
+        if emp_id in ['6', '37'] and (late_minutes + early_minutes) <= 60:
             final_duration = duration_2
-            df_result.at[idx, 'Ghi chú'] = "Dùng thời lượng chính sách (Giờ ra - Giờ vào)" if duration_2 > 0 else df_result.at[idx, 'Ghi chú']
+            df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + " (Dùng thời lượng chính sách vì tổng đi trễ/về sớm <= 60 phút)"
+        elif duration_1 > duration_2:
+            final_duration = duration_2
+            df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + " (Dùng thời lượng chính sách (Giờ ra - Giờ vào))"
         else:
             final_duration = duration_1
-            df_result.at[idx, 'Ghi chú'] = "Dùng thời lượng thực tế (LastCheckOut - FirstCheckIn)" if duration_1 > 0 else df_result.at[idx, 'Ghi chú']
+            df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + " (Dùng thời lượng thực tế (LastCheckOut - FirstCheckIn))"
+            
 
         df_result.at[idx, 'Thời lượng (h)'] = round(final_duration, 2)
         df_result.at[idx, 'Thời lượng'] = format_duration(final_duration)
@@ -266,6 +301,13 @@ def apply_policy_adjustments(df_result, policy_df):
 
 def process_attendance(df, policy_df=None):
     """Xử lý dữ liệu chấm công và áp dụng điều chỉnh chính sách."""
+
+    # Nếu truyền vào là list thì convert sang DataFrame
+    if isinstance(df, list):
+        df = pd.DataFrame(df)
+    elif not isinstance(df, pd.DataFrame):
+        raise ValueError("process_attendance chỉ nhận DataFrame hoặc list of dict")
+    
     # Đổi tên cột cho phù hợp
     df = df.rename(columns={
         df.columns[0]: "timestamp",

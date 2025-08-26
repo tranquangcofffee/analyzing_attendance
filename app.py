@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 from services.attendance_service import process_attendance, format_duration
 from services.excel_service import save_excel, get_excel_path
+from services.add_log_service import add_log_service, reconstruct_raw_data_from_attendance
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import NamedStyle
@@ -18,8 +19,24 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['CACHE_TYPE'] = 'SimpleCache'
-app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60 * 3 # giữ cache 1 giờ
+app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60 * 8 # giữ cache 1 giờ
 cache = Cache(app)
+
+def reload_raw_data():
+    filename = cache.get('raw_data_filename')
+    if filename:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        try:
+            if filename.endswith('.csv'):
+                df = pd.read_csv(filepath, encoding='utf-8-sig')
+            else:
+                df = pd.read_excel(filepath)
+            print(f"Reloaded raw_data columns: {df.columns.tolist()}")
+            cache.set('raw_data', df.to_dict(orient='records'))
+            return df
+        except Exception as e:
+            print(f"Error reloading raw_data: {e}")
+    return None
 
 def sort_attendance_df(df):
     df_regular = df[~df['ID'].astype(str).str.startswith('OUTSIDE_')].copy()
@@ -146,6 +163,8 @@ def index():
             # Gọi hàm xử lý
             result = process_attendance(df, policy_df)
             cache.set('attendance_data', result)
+            cache.set('raw_data', df.to_dict(orient='records'))
+            cache.set('policy_data', policy_df.to_dict(orient='records') if policy_df is not None else None)
 
             # Ghi ra file
             save_excel(result)
@@ -305,6 +324,46 @@ def index():
         early_employees=early_employees if early_employees else [],
     )
 
+@app.route('/add_log', methods=['POST'])
+def add_log():
+    cache_status = {
+        'raw_data': cache.get('raw_data') is not None,
+        'policy_data': cache.get('policy_data') is not None,
+        'attendance_data': cache.get('attendance_data') is not None
+    }
+    print(f"Cache check in /add_log: {cache_status}")
+
+    raw_data = cache.get('raw_data')
+    if raw_data is None:
+        df = reload_raw_data()
+        if df is not None:
+            raw_data = df.to_dict(orient='records')
+            cache.set('raw_data', raw_data)
+        else:
+            attendance_data = cache.get('attendance_data')
+            raw_data = reconstruct_raw_data_from_attendance(attendance_data)
+            if raw_data is None:
+                return render_template('index.html', 
+                                     error="Dữ liệu chấm công gốc không có và không thể tái tạo. Vui lòng upload lại file chấm công.", 
+                                     cache_status=cache_status), 400
+            cache.set('raw_data', raw_data)
+    
+    policy_data = cache.get('policy_data')
+    
+    id_emp = request.form.get('id').strip()
+    datetime_str = request.form.get('datetime')
+    key = request.form.get('key')
+    
+    raw_df, result_df, error = add_log_service(raw_data, policy_data, id_emp, datetime_str, key)
+    
+    if error:
+        return render_template('index.html', error=error, cache_status=cache_status), 400
+    
+    cache.set('raw_data', raw_df.to_dict(orient='records'))
+    cache.set('attendance_data', result_df)
+    save_excel(result_df)
+    
+    return redirect(url_for('index'))
 
 @app.route('/download', methods=['GET', 'POST'])
 def download_excel():
@@ -482,6 +541,15 @@ def download_filtered_excel():
     output.seek(0)
 
     return send_file(output, download_name=file_name + '.xlsx', as_attachment=True)
+
+@app.route('/check_cache')
+def check_cache():
+    cache_status = {
+        'raw_data': cache.get('raw_data') is not None,
+        'policy_data': cache.get('policy_data') is not None,
+        'attendance_data': cache.get('attendance_data') is not None
+    }
+    return render_template('cache_status.html', cache_status=cache_status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
