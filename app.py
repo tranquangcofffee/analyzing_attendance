@@ -245,18 +245,18 @@ def index():
         total_late_minutes = 0
         total_early_minutes = 0
 
-        # for index, row in df.iterrows():
-        #     status = row['Đi trễ/Về sớm']
-        #     if pd.notna(status) and status != "Đúng giờ":
-        #         # Tách các trạng thái (Đi trễ, Về sớm)
-        #         statuses = status.split(', ')
-        #         for s in statuses:
-        #             if 'Đi trễ' in s:
-        #                 minutes = int(s.replace('Đi trễ ', '').replace(' phút', ''))
-        #                 total_late_minutes += minutes
-        #             elif 'Về sớm' in s:
-        #                 minutes = int(s.replace('Về sớm ', '').replace(' phút', ''))
-        #                 total_early_minutes += minutes
+        for index, row in df.iterrows():
+            status = row['Đi trễ/Về sớm']
+            if pd.notna(status) and status != "Đúng giờ":
+                # Tách các trạng thái (có thể chỉ Đi trễ hoặc chỉ Về sớm)
+                statuses = [s.strip() for s in status.split(',')]
+                for s in statuses:
+                    if s.startswith('Đi trễ'):
+                        minutes = int(s.replace('Đi trễ', '').replace('phút', '').strip())
+                        total_late_minutes += minutes
+                    elif s.startswith('Về sớm'):
+                        minutes = int(s.replace('Về sớm', '').replace('phút', '').strip())
+                        total_early_minutes += minutes
 
         # Làm sạch dữ liệu trước khi xử lý
         df['Đi trễ/Về sớm'] = df['Đi trễ/Về sớm'].fillna('Đúng giờ').str.strip()
@@ -550,6 +550,10 @@ def check_cache():
         'attendance_data': cache.get('attendance_data') is not None
     }
     return render_template('cache_status.html', cache_status=cache_status)
+
+@app.route('/update')
+def update():
+    return render_template('update.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

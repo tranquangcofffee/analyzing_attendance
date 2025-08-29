@@ -10,6 +10,10 @@
     <div class="logo-container">
         <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
     </div>
+    <div class="quick-links" style="display: flex; justify-content: center; gap: 18px; margin: 18px 0 0 0;">
+        <a href="{{ url_for('check_cache') }}" class="btn-quick-link" style="background: #f9a77b; color: #fff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; transition: background 0.2s;">Kiểm tra cache</a>
+        <a href="{{ url_for('update') }}" class="btn-quick-link" style="background: #f9a77b; color: #fff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; transition: background 0.2s;">Xem cập nhật</a>
+    </div>
     <h1>Kiểm tra công theo ca</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
