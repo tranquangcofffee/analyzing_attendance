@@ -91,11 +91,11 @@
 
         <div class="top-flex-row">
 
-            {% if late_employees or missing_employees %}
+            {% if late_employees or early_employees or missing_employees %}
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
-                <div style="display: flex; gap: 20px;">
+                
                     <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
                         <button style="background-color: #007BFF; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('late-employees')">Nhân sự đi trễ</button>
                         <div id="late-employees" style="display: none; margin-top: 10px;">
@@ -107,6 +107,9 @@
                             </ul>
                         </div>
                     </div>
+                
+                {% endif %}
+                {% if early_employees %}
 
                     <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
                         <button style="background-color: #28A745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('early-employees')">Nhân sự về sớm</button>
@@ -119,8 +122,10 @@
                             </ul>
                         </div>
                     </div>
-
-                    {% if stats %}
+                
+                {% endif %}
+                {% if stats %}
+                
                     <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
                         <button style="background-color: #FFC107; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('stats-box')">Thống kê</button>
                         <div id="stats-box" style="display: none; margin-top: 10px;">
@@ -135,8 +140,7 @@
                             </ul>
                         </div>
                     </div>
-                    {% endif %}
-                </div>
+                
                 {% endif %}
                 {% if missing_employees %}
                 <div>
