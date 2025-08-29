@@ -245,18 +245,23 @@ def index():
         total_late_minutes = 0
         total_early_minutes = 0
 
+        import re  # Đảm bảo import re ở đầu file
         for index, row in df.iterrows():
             status = row['Đi trễ/Về sớm']
             if pd.notna(status) and status != "Đúng giờ":
-                # Tách các trạng thái (có thể chỉ Đi trễ hoặc chỉ Về sớm)
-                statuses = [s.strip() for s in status.split(',')]
+                statuses = status.split(', ') if ', ' in status else [status]
                 for s in statuses:
+                    s = s.strip()
                     if s.startswith('Đi trễ'):
-                        minutes = int(s.replace('Đi trễ', '').replace('phút', '').strip())
-                        total_late_minutes += minutes
+                        match = re.search(r'Đi trễ\s*(-?\d+)', s)
+                        if match:
+                            minutes = int(match.group(1))
+                            total_late_minutes += minutes
                     elif s.startswith('Về sớm'):
-                        minutes = int(s.replace('Về sớm', '').replace('phút', '').strip())
-                        total_early_minutes += minutes
+                        match = re.search(r'Về sớm\s*(-?\d+)', s)
+                        if match:
+                            minutes = int(match.group(1))
+                            total_early_minutes += minutes
 
         # Làm sạch dữ liệu trước khi xử lý
         df['Đi trễ/Về sớm'] = df['Đi trễ/Về sớm'].fillna('Đúng giờ').str.strip()
