@@ -2,43 +2,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import re
 from math import floor
-
-#region # Constants and error messages
-TIME_FLAG = 4
-DAY_PARSE_ERROR = 'Ngày không hợp lệ, vui lòng kiểm tra định dạng ngày tháng năm.'
-MISSING_CHECKIN = 'Thiếu check-in, vui lòng kiểm tra dữ liệu chấm công.'
-MISSING_CHECKOUT = 'Thiếu check-out, vui lòng kiểm tra dữ liệu chấm công.'
-MISSING_SCAN_BIO = 'Thiếu dữ liệu xử lý (FCI/LCO) {0}, vui lòng kiểm tra dữ liệu chấm công.'
-THROUGH_SHIFT = 'Thông ca'
-THROUGH_SHIFT_PASSED = 'Bỏ qua vì là Thông ca'
-POLICY_IS_NOT_APPLICABLE = 'Chính sách không áp dụng cho nhân sự này'
-POLICY_IS_NOT_EXIST = 'Chính sách không tồn tại cho nhân sự {0}'
-#endregion
-
-def extract_time_only(x):
-    try:
-        dt = pd.to_datetime(x, format='%d/%m - %H:%M:%S', errors='coerce')
-        return dt.strftime('%H:%M:%S') if not pd.isna(dt) else 'Không có'
-    except:
-        return 'Không có'
-
-def parse_timestamp(ts):
-    try:
-        return datetime.strptime(str(ts), "%Y%m%d%H%M%S")
-    except:
-        return None
-
-def natural_sort_key(val):
-    parts = re.split(r'(\d+)', str(val))
-    return [int(part) if part.isdigit() else part.lower() for part in parts]
-
-def format_duration(hours):
-    if pd.isna(hours):
-        return ""
-    total_minutes = int(hours * 60)
-    h = total_minutes // 60
-    m = total_minutes % 60
-    return f"{h} giờ {m} phút" if total_minutes > 0 else "0 phút"
+from helpers.attendance_helpers import extract_time_only, parse_timestamp, natural_sort_key, format_duration, handle_single_logs, replace_key_values, remove_nan_rows
+from message_constant.message_constant import *
 
 def handle_single_logs(group, processed_indices, emp_id, name, records):
     for idx, row in group.iterrows():
@@ -84,6 +49,66 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                 'Loại ca': shift_type,
                 'Log hôm trước': 'None'
             })
+
+def handle_machine_failure(df_result):
+    """Xử lý sự cố máy quét từ 6h ngày 2/9/2025 đến 9h10 ngày 4/9/2025, bù 31 tiếng."""
+    failure_start = datetime(2025, 9, 2, 6, 0, 0)
+    failure_end = datetime(2025, 9, 4, 9, 10, 0)
+    compensation_hours = 31.0
+    specific_check_time = datetime(2025, 9, 3, 1, 19, 51)  # Bản ghi cụ thể của bạn
+
+    compensated_count = 0
+    debug_logs = []
+
+    for idx, row in df_result.iterrows():
+        try:
+            fci_str = row['FirstCheckIn']
+            lco_str = row['LastCheckOut']
+            
+            # Parse FCI và LCO
+            fci = pd.to_datetime(fci_str, format='%d/%m - %H:%M:%S', errors='coerce') if fci_str != 'Không có' else None
+            lco = pd.to_datetime(lco_str, format='%d/%m - %H:%M:%S', errors='coerce') if lco_str != 'Không có' else None
+            
+            # Ghi log giá trị đã parse
+            debug_logs.append(f"Bản ghi {idx}: FCI_str={fci_str}, LCO_str={lco_str}, FCI={fci}, LCO={lco}")
+
+            # Kiểm tra nếu bản ghi nằm trong khoảng thời gian sự cố
+            is_within_failure = False
+            if fci is not None and (failure_start <= fci <= failure_end):
+                is_within_failure = True
+                debug_logs.append(f"Bản ghi {idx}: FCI {fci_str} nằm trong khoảng sự cố")
+            elif lco is not None and (failure_start <= lco <= failure_end):
+                is_within_failure = True
+                debug_logs.append(f"Bản ghi {idx}: LCO {lco_str} nằm trong khoảng sự cố")
+            elif fci is not None and lco is not None and (fci <= failure_end and lco >= failure_start):
+                is_within_failure = True
+                debug_logs.append(f"Bản ghi {idx}: FCI {fci_str} và LCO {lco_str} giao với khoảng sự cố")
+            elif fci is not None and fci == specific_check_time:
+                is_within_failure = True
+                debug_logs.append(f"Bản ghi {idx}: FCI khớp chính xác 03/09 - 01:19:51")
+            elif fci is not None and fci.date() in [datetime(2025, 9, 2).date(), datetime(2025, 9, 3).date()]:
+                is_within_failure = True
+                debug_logs.append(f"Bản ghi {idx}: FCI {fci_str} thuộc ngày 2/9 hoặc 3/9/2025")
+
+            if is_within_failure:
+                df_result.at[idx, 'Thời lượng (h)'] = compensation_hours
+                df_result.at[idx, 'Thời lượng'] = format_duration(compensation_hours)
+                df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + f" ({MACHINE_FAILURE_NOTE})"
+                compensated_count += 1
+                debug_logs.append(f"Bản ghi {idx}: Đã bù 31 tiếng")
+            else:
+                debug_logs.append(f"Bản ghi {idx}: Không nằm trong khoảng sự cố (FCI: {fci_str}, LCO: {lco_str})")
+        except Exception as e:
+            debug_logs.append(f"Bản ghi {idx}: Lỗi xử lý - {str(e)}")
+            df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or "") + f" (Lỗi xử lý sự cố máy quét: {str(e)})"
+            continue
+
+    # In log để debug
+    print(f"Đã bù 31 tiếng cho {compensated_count} bản ghi trong khoảng thời gian sự cố.")
+    for log in debug_logs:
+        print(log)
+
+    return df_result
 
 def remove_nan_rows(df_result):
     """Loại bỏ các dòng có giá trị NaN trong các cột quan trọng."""
@@ -318,6 +343,9 @@ def process_attendance(df, policy_df=None):
         df.columns[5]: "key"
     })
 
+    # Thay thế giá trị key (IN, IN DUTY -> Vào; OUT, OUT DUTY -> Ra)
+    df = replace_key_values(df)
+
     # Phân tích timestamp và loại bỏ hàng không hợp lệ
     df['datetime'] = df['timestamp'].apply(parse_timestamp)
     df.dropna(subset=['datetime'], inplace=True)
@@ -469,7 +497,7 @@ def process_attendance(df, policy_df=None):
 
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
-                    morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
+                    morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào'] 
                     morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
                     
                     if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
@@ -526,6 +554,7 @@ def process_attendance(df, policy_df=None):
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
     df_result = pd.DataFrame(records)
+    df_result = handle_machine_failure(df_result)
 
     df_result['FCI (giờ)'] = df_result['FirstCheckIn'].apply(extract_time_only)
     df_result['LCO (giờ)'] = df_result['LastCheckOut'].apply(extract_time_only)
