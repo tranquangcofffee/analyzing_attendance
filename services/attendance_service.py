@@ -6,11 +6,12 @@ from helpers.attendance_helpers import extract_time_only, parse_timestamp, natur
 from message_constant.message_constant import *
 
 def handle_single_logs(group, processed_indices, emp_id, name, records):
+
     for idx, row in group.iterrows():
         if idx in processed_indices:
             continue
 
-        log_date = row['datetime'].date()
+        log_date = row['datetime'].strftime('%d/%m/%Y')
         fci = row['datetime']
         
         # Kiểm tra ca sáng thiếu log
@@ -26,29 +27,52 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                 'ID': emp_id,
                 'Họ tên': name,
                 'Ngày': log_date,
-                'FCI': fci.strftime('%d/%m - %H:%M:%S'),
-                'FCI trạng thái': 'Vào',
-                'LCO': 'Không có',
-                'LCO trạng thái': 'Không có',
+                'FirstCheckIn': fci.strftime('%d/%m - %H:%M:%S'),
+                'FCI (giờ)': 'Không có',
+                'LastCheckOut': 'Không có',
+                'LCO (giờ)': 'Không có',
                 'Thời lượng (h)': 0,
-                'Loại ca': shift_type,
-                'Log hôm trước': 'None'
+                'Thời lượng': 0,
+                'Loại ca': shift_type
             })
 
-        elif row['key'] == 'Ra':
-            shift_type = 'Thiếu FCI'
-            records.append({
-                'ID': emp_id,
-                'Họ tên': name,
-                'Ngày': log_date,
-                'FCI': 'Không có',
-                'FCI trạng thái': 'Không có',
-                'LCO': row['datetime'].strftime('%d/%m - %H:%M:%S'),
-                'LCO trạng thái': 'Ra',
-                'Thời lượng (h)': 0,
-                'Loại ca': shift_type,
-                'Log hôm trước': 'None'
-            })
+        elif row['key'] == 'Ra':  
+            # Tìm xem có FCI trước đó không
+            previous_fci = group[(group['datetime'] < row['datetime']) & (group['key'] == 'Vào')]
+            
+            if not previous_fci.empty:
+                # Có FCI trước đó => log này là LCO hợp lệ, bỏ qua ở đây
+                continue
+            else:
+                # Không có FCI trước đó => check thêm khung giờ
+                if 0 <= row['datetime'].hour <= 8:
+                    # Có thể là LCO của ca đêm hôm trước => KHÔNG coi là thiếu FCI
+                    continue
+                else:
+                    # Thực sự là thiếu FCI
+                    shift_type = 'Thiếu FCI'
+                    records.append({
+                        'ID': emp_id,
+                        'Họ tên': name,
+                        'Ngày chấm công': log_date,
+                        'FirstCheckIn': 'Không có',
+                        'FCI (giờ)': 'Không có',
+                        'LastCheckOut': row['datetime'].strftime('%d/%m - %H:%M:%S'),
+                        'LCO (giờ)': 'Không có',
+                        'Thời lượng (h)': 0,
+                        'Thời lượng': 0,
+                        'Loại ca': shift_type
+                    })
+
+
+# df_result = df_result[[
+#         'ID', 'Họ tên', 'Ngày chấm công',
+#         'Giờ vào', 'Giờ ra',
+#         'FirstCheckIn', 'FCI (giờ)',
+#         'LastCheckOut', 'LCO (giờ)',
+#         'Thời lượng (h)', 'Thời lượng', 'Loại ca',
+#         'Ghi chú'
+#     ]]
 
 def handle_machine_failure(df_result):
     """Xử lý sự cố máy quét từ 6h ngày 2/9/2025 đến 9h10 ngày 4/9/2025, bù 31 tiếng."""
@@ -123,7 +147,8 @@ def remove_nan_rows(df_result):
 def apply_policy_adjustments(df_result, policy_df):
     """Áp dụng điều chỉnh chính sách từ file chính sách, lưu Giờ vào/ra theo chính sách, tính đi trễ/về sớm."""
     # Đảm bảo tên cột đúng
-    expected_columns = ['ID', 'start_day', 'start_night', 'end_day', 'end_night', 'late_tol', 'early_tol']
+    expected_columns = ['ID', 'start_day', 'start_night', 'end_day', 'end_night', 'late_tol', 'early_tol', 'working_place']
+
     if not all(col in policy_df.columns for col in expected_columns):
         policy_df.columns = expected_columns[:len(policy_df.columns)]
     
@@ -153,6 +178,9 @@ def apply_policy_adjustments(df_result, policy_df):
     # Thêm cột mới cho đi trễ/về sớm
     df_result['Đi trễ/Về sớm'] = ""
 
+    # Thêm cột nơi làm việc 
+    df_result['Nơi làm việc'] = ""
+
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
         if emp_id not in late_early_summary:
@@ -161,11 +189,15 @@ def apply_policy_adjustments(df_result, policy_df):
         if emp_id not in policy_map:
             df_result.at[idx, 'Ghi chú'] = "Không tìm thấy chính sách cho ID {}".format(emp_id)
             df_result.at[idx, 'Đi trễ/Về sớm'] = "Không có chính sách"
+            df_result.at[idx, 'Nơi làm việc'] = "Không có chính sách"
             continue
 
         policy = policy_map[emp_id]
         shift_type = row.get('Loại ca', '')
         date_ref = row.get('Ngày chấm công')
+
+        # Gán nơi làm việc vào 
+        df_result.at[idx, 'Nơi làm việc'] = policy.get('working_place', '')
 
         # Kiểm tra và chuyển đổi date_ref
         try:
@@ -205,8 +237,8 @@ def apply_policy_adjustments(df_result, policy_df):
             continue
 
         if not shift_start or not shift_end:
-            df_result.at[idx, 'Ghi chú'] = "Chính sách không áp dụng được"
-            df_result.at[idx, 'Đi trễ/Về sớm'] = "Thời gian chính sách không hợp lệ"
+            df_result.at[idx, 'Ghi chú'] = " "
+            df_result.at[idx, 'Đi trễ/Về sớm'] = " "
             continue
 
         # Gán Giờ vào và Giờ ra theo chính sách
@@ -554,7 +586,7 @@ def process_attendance(df, policy_df=None):
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
     df_result = pd.DataFrame(records)
-    df_result = handle_machine_failure(df_result)
+    # df_result = handle_machine_failure(df_result)
 
     df_result['FCI (giờ)'] = df_result['FirstCheckIn'].apply(extract_time_only)
     df_result['LCO (giờ)'] = df_result['LastCheckOut'].apply(extract_time_only)
@@ -588,6 +620,6 @@ def process_attendance(df, policy_df=None):
         df_result['Tổng về sớm (phút)'] = df_result['Tổng về sớm (phút)'].apply(lambda x: format_duration(x / 60))
 
     # Loại bỏ các dòng có NaN trong các cột quan trọng
-    df_result = remove_nan_rows(df_result)
+    # df_result = remove_nan_rows(df_result)
 
     return df_result
