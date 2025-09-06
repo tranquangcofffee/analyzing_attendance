@@ -46,6 +46,16 @@
                 <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
                 <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
                 <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+
+                <div class="select-wrapper">
+                    <label for="working_place">Nơi làm việc:</label>
+                    <select id="working_place" name="working_place[]" multiple>
+                        <option value="Nhà Máy 1" {% if "Nhà Máy 1" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 1</option>
+                        <option value="Nhà Máy 2" {% if "Nhà Máy 2" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 2</option>
+                        <option value="Nhà Máy 3" {% if "Nhà Máy 3" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 3</option>
+                    </select>
+                </div>
+
                 <div class="select-wrapper">
                     <label for="shift_type">Loại ca:</label>
                     <select multiple name="shift_type[]" id="shift_type">
@@ -55,17 +65,19 @@
                         <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
                         <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
                         <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
+                        <option value="Thiếu FCI" {% if request.args.get('shift_type') == 'Thiếu FCI' %}selected{% endif %}>Thiếu FCI</option>
                     </select>
                 </div>
+
                 <input type="submit" value="Lọc dữ liệu" class="btn-filter">
             </div>
         </form>
 
         <div class="pagination">
             <span>Trang {{ page }} / {{ total_pages }} (Tổng {{ total_records }} bản ghi)</span>
-            <a href="{{ url_for('index', page=page-1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]')}) }}"
+            <a href="{{ url_for('index', page=page-1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]'), 'working_place[]': request.args.getlist('working_place[]')}) }}"
             class="{% if page <= 1 or total_pages == 0 %}disabled{% endif %}">Trước</a>
-            <a href="{{ url_for('index', page=page+1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]')}) }}"
+            <a href="{{ url_for('index', page=page+1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]'), 'working_place[]': request.args.getlist('working_place[]')}) }}"
             class="{% if page >= total_pages or total_pages == 0 %}disabled{% endif %}">Sau</a>
             <form id="perPageForm" method="GET" action="{{ url_for('index') }}">
                 <input type="hidden" name="msnv" value="{{ request.args.get('msnv', '') }}">
@@ -73,7 +85,10 @@
                 <input type="hidden" name="start_date" value="{{ request.args.get('start_date', '') }}">
                 <input type="hidden" name="end_date" value="{{ request.args.get('end_date', '') }}">
                 {% for shift in request.args.getlist('shift_type[]') %}
-                <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                    <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
                 {% endfor %}
                 <input type="hidden" name="page" value="1">
                 <label for="per_page">Số bản ghi mỗi trang:</label>
@@ -82,6 +97,7 @@
                     <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
                     <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
                     <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                    <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
                 </select>
             </form>
         </div>
@@ -93,6 +109,9 @@
                 {% for shift in request.args.getlist('shift_type[]') %}
                     <input type="hidden" name="shift_type[]" value="{{ shift }}">
                 {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
+                {% endfor %}
                 <input type="submit" value="Tải kết quả Excel">
             </form>
 
@@ -100,6 +119,9 @@
                 <input type="hidden" name="visible_columns" id="visible_columns_filter_input">
                 {% for shift in request.args.getlist('shift_type[]') %}
                     <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
                 {% endfor %}
                 <input type="hidden" name="employee_id" value="{{ request.args.get('msnv', '') }}">
                 <button type="submit" class="download-shift-id">Tải theo ca / ID</button>
@@ -206,8 +228,9 @@
                     <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
                     <label><input type="checkbox" class="toggle-col" data-col="12" checked> Ghi chú</label>
                     <label><input type="checkbox" class="toggle-col" data-col="13" checked> Đi trễ/Về sớm</label>
-                    <label><input type="checkbox" class="toggle-col" data-col="14" checked> Tổng đi trễ (phút)</label>
-                    <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng về sớm (phút)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="14" checked> Nơi làm việc</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng đi trễ (phút)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="16" checked> Tổng về sớm (phút)</label>
                 </div>
             </div>
 

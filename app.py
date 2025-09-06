@@ -133,7 +133,7 @@ def index():
 
     # Thêm tham số phân trang
     page = max(1, int(request.args.get('page', 1)))
-    per_page = max(10, min(int(request.args.get('per_page', 10)), 100))
+    per_page = max(10, min(int(request.args.get('per_page', 500)), 100))
 
     if request.method == 'POST':
         file = request.files['file']
@@ -185,11 +185,24 @@ def index():
     if cached_df is not None:
         df = cached_df.copy()
 
+        policy_data = cache.get('policy_data')
+        working_places = []
+        if policy_data is not None:
+            policy_df = pd.DataFrame(policy_data)
+            working_places = policy_df['working_place'].dropna().str.strip().str.title().unique().tolist()
+            # Loại bỏ giá trị rỗng
+            working_places = [place for place in working_places if place]
+        else:
+            # Nếu không có policy_data, sử dụng giá trị mặc định hoặc từ df
+            working_places = [place for place in df['Nơi làm việc'].unique() if place and place != 'Không xác định']
+            print("Warning: No policy_data found, falling back to df['Nơi làm việc']")
+
         msnv = request.args.get('msnv', '').strip()
         name = request.args.get('name', '').strip().lower()
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
         shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
+        working_place = request.args.getlist('working_place[]')  # Lấy danh sách nơi làm việc
 
         # Lọc theo loại ca
         if shift_types:
@@ -198,6 +211,17 @@ def index():
             df = df[df['ID'].astype(str) == msnv]
         if name:
             df = df[df['Họ tên'].str.lower() == name]
+        # Lọc theo nơi làm việc
+        if working_place:
+            print(f"Filtering by working_place: {working_place}")
+            print(f"Available working_places: {working_places}")
+            valid_places = [place for place in working_place if place in working_places]
+            if not valid_places:
+                return render_template('index.html', 
+                                     error="Không có nơi làm việc nào trong danh sách lựa chọn tồn tại trong dữ liệu.", 
+                                     working_places=working_places)
+            df = df[df['Nơi làm việc'].isin(valid_places)]
+            print(f"Rows after filtering by working_place: {len(df)}")
 
         # Lọc theo ngày sử dụng filter_by_date
         try:
@@ -348,6 +372,7 @@ def index():
         per_page=per_page,
         total_pages=total_pages,
         total_records=total_records
+        # working_places=working_places,
     )
 
 @app.route('/add_log', methods=['POST'])
@@ -397,10 +422,22 @@ def download_excel():
     df = cache.get('attendance_data')
     if df is None:
         return "Không có dữ liệu để tải.", 400
+    
+    # Lấy danh sách nơi làm việc từ policy_data
+    policy_data = cache.get('policy_data')
+    working_places = []
+    if policy_data is not None:
+        policy_df = pd.DataFrame(policy_data)
+        working_places = policy_df['working_place'].dropna().str.strip().str.title().unique().tolist()
+        working_places = [place for place in working_places if place]
+    else:
+        working_places = ['Không xác định']
+        print("Warning: No policy_data found, using default working_places")
 
     # Xử lý nguồn dữ liệu đầu vào
     if request.method == 'POST':
         visible_cols_str = request.form.get('visible_columns', '')
+        working_place = request.form.getlist('working_place[]')
         shift_types = request.form.getlist('shift_type[]')
         employee_id = request.form.get('employee_id', '').strip()
         name = request.form.get('name', '').strip().lower()
@@ -408,6 +445,7 @@ def download_excel():
         end_date = request.form.get('end_date', '').strip()      # Thêm end_date
     else:  # GET
         visible_cols_str = request.args.get('visible_columns', '')
+        working_place = request.form.getlist('working_place[]')
         shift_types = request.args.getlist('shift_type[]')
         employee_id = request.args.get('employee_id', '').strip()
         name = request.args.get('name', '').strip().lower()
@@ -417,8 +455,19 @@ def download_excel():
     # Lọc dữ liệu nếu có shift_type, ID hoặc ngày
     df_filtered = df.copy()
 
+    # Đảm bảo cột Nơi làm việc tồn tại
+    if 'Nơi làm việc' not in df_filtered.columns:
+        df_filtered['Nơi làm việc'] = 'Không xác định'
+    # Xử lý giá trị rỗng trong Nơi làm việc
+    df_filtered['Nơi làm việc'] = df_filtered['Nơi làm việc'].replace('', 'Không xác định')
+
     if shift_types:
         df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
+
+    if working_place:
+        valid_places = [place for place in working_place if place in working_places or place == 'Không xác định']
+        if valid_places:
+            df_filtered = df_filtered[df_filtered['Nơi làm việc'].isin(valid_places)]
 
     if employee_id:
         df_filtered = df_filtered[df_filtered['ID'].astype(str) == employee_id]
@@ -521,6 +570,7 @@ def download_filtered_excel():
     visible_indices = list(map(int, visible_cols_str.split(','))) if visible_cols_str else []
 
     shift_types = request.args.getlist('shift_type[]')  # Lấy danh sách shift_type
+    working_place = request.form.getlist('working_place[]')  # Lấy danh sách nơi làm việc
     employee_id = request.args.get('employee_id', '').strip()
     name = request.args.get('name', '').strip().lower()
 
@@ -529,12 +579,35 @@ def download_filtered_excel():
     df = cache.get('attendance_data')
     if df is None:
         return "Không có dữ liệu để tải.", 400
+    
+    # Lấy danh sách nơi làm việc từ policy_data
+    policy_data = cache.get('policy_data')
+    working_places = []
+    if policy_data is not None:
+        policy_df = pd.DataFrame(policy_data)
+        working_places = policy_df['working_place'].dropna().str.strip().str.title().unique().tolist()
+        working_places = [place for place in working_places if place]
+    else:
+        working_places = ['Không xác định']
+        print("Warning: No policy_data found, using default working_places")
 
     df_filtered = df.copy()
+
+    # Đảm bảo cột Nơi làm việc tồn tại
+    if 'Nơi làm việc' not in df_filtered.columns:
+        df_filtered['Nơi làm việc'] = 'Không xác định'
+    
+    # Xử lý giá trị rỗng trong Nơi làm việc
+    df_filtered['Nơi làm việc'] = df_filtered['Nơi làm việc'].replace('', 'Không xác định')
 
     # Lọc theo loại ca (nếu có)
     if shift_types:
         df_filtered = df_filtered[df_filtered['Loại ca'].isin(shift_types)]
+
+    if working_place:
+        valid_places = [place for place in working_place if place in working_places or place == 'Không xác định']
+        if valid_places:
+            df_filtered = df_filtered[df_filtered['Nơi làm việc'].isin(valid_places)]
 
     # Lọc theo ID (nếu có)
     if employee_id:
