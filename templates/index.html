@@ -2,7 +2,16 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>🔍 Kiểm tra công nhân sự</title>
+    <title>Kiểm tra công nhân sự</title>
+    <style>
+        table.data { border-collapse: collapse; width: 100%; }
+        table.data th, table.data td { border: 1px solid black; padding: 8px; text-align: left; }
+        table.data th { background-color: #f2f2f2; }
+        .pagination { margin: 20px 0; }
+        .pagination a { margin: 0 5px; text-decoration: none; }
+        .pagination a.disabled { color: grey; pointer-events: none; }
+        .pagination select { margin-left: 10px; }
+    </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 </head>
@@ -51,6 +60,31 @@
                 <input type="submit" value="Lọc dữ liệu" class="btn-filter">
             </div>
         </form>
+
+        <div class="pagination">
+            <span>Trang {{ page }} / {{ total_pages }} (Tổng {{ total_records }} bản ghi)</span>
+            <a href="{{ url_for('index', page=page-1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]')}) }}"
+            class="{% if page <= 1 or total_pages == 0 %}disabled{% endif %}">Trước</a>
+            <a href="{{ url_for('index', page=page+1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]')}) }}"
+            class="{% if page >= total_pages or total_pages == 0 %}disabled{% endif %}">Sau</a>
+            <form id="perPageForm" method="GET" action="{{ url_for('index') }}">
+                <input type="hidden" name="msnv" value="{{ request.args.get('msnv', '') }}">
+                <input type="hidden" name="name" value="{{ request.args.get('name', '') }}">
+                <input type="hidden" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                <input type="hidden" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                {% for shift in request.args.getlist('shift_type[]') %}
+                <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
+                <input type="hidden" name="page" value="1">
+                <label for="per_page">Số bản ghi mỗi trang:</label>
+                <select name="per_page" onchange="this.form.submit()">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </form>
+        </div>
 
         <div class="button-container">
             <!-- Nút download Excel -->
@@ -208,17 +242,7 @@
     </div>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='toggle_columns.js') }}"></script>
-    <script>
-        function toggleVisibility(id) {
-            const element = document.getElementById(id);
-            if (element.style.display === "none") {
-                element.style.display = "block";
-            } else {
-                element.style.display = "none";
-            }
-        }
-    </script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 
 </body>
 </html>

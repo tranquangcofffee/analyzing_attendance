@@ -10,6 +10,7 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import NamedStyle
 from io import BytesIO
+from math import ceil
 import re
 
 app = Flask(__name__)
@@ -127,6 +128,12 @@ def index():
     late_employees = []  # Danh sách nhân sự đi trễ
     missing_employees = []  # Danh sách nhân sự quét thiếu
     early_employees = []  # Danh sách nhân sự về sớm
+    total_pages = 0  # Initialize default value
+    total_records = 0  # Initialize default value
+
+    # Thêm tham số phân trang
+    page = max(1, int(request.args.get('page', 1)))
+    per_page = max(10, min(int(request.args.get('per_page', 10)), 100))
 
     if request.method == 'POST':
         file = request.files['file']
@@ -212,7 +219,15 @@ def index():
         df = df.sort_values(by=['ID_sort', 'Ngày chấm công']).drop(columns=['ID_sort'])
 
         df = sort_attendance_df(df)
-        result = df
+        # result = df
+
+        # Tính toán phân trang
+        total_records = len(df)
+        total_pages = ceil(total_records / per_page)  # Tổng số trang
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        df_paginated = df.iloc[start_idx:end_idx]  # Lấy dữ liệu cho trang hiện tại
+        print(f"Pagination: total_records={total_records}, total_pages={total_pages}, start_idx={start_idx}, end_idx={end_idx}")
 
         # Khởi tạo biến đếm số lần
         total_late = 0
@@ -318,6 +333,8 @@ def index():
             'total_early_duration': total_early_duration  # Giữ nguyên vì đã đúng
         })
 
+        result = df_paginated
+
     return render_template('index.html',
         tables=[result.to_html(classes='data', index=False, escape=False)] if result is not None else None,
         titles=result.columns.values if result is not None else None,
@@ -327,6 +344,10 @@ def index():
         late_employees=late_employees,
         missing_employees=missing_employees,
         early_employees=early_employees if early_employees else [],
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        total_records=total_records
     )
 
 @app.route('/add_log', methods=['POST'])

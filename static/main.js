@@ -31,3 +31,27 @@ document.getElementById('download-filter-form').addEventListener('submit', funct
     });
     document.getElementById('visible_columns_filter_input').value = visibleCols.join(',');
 });
+
+function toggleVisibility(id) {
+    const element = document.getElementById(id);
+    if (element.style.display === "none") {
+        element.style.display = "block";
+    } else {
+        element.style.display = "none";
+    }
+}
+
+function updatePerPage(perPage) {
+        console.log('Selected per_page:', perPage);
+        const validPerPage = [10, 25, 50, 100];
+        if (!validPerPage.includes(parseInt(perPage))) {
+            console.error('Invalid per_page value:', perPage);
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        params.set('per_page', perPage);
+        params.set('page', 1);
+        const newUrl = '{{ url_for("index") }}?' + params.toString();
+        console.log('Navigating to:', newUrl);
+        window.location.href = newUrl;
+    }
