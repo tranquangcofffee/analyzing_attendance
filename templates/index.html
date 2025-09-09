@@ -65,7 +65,8 @@
                         <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
                         <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
                         <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
-                        <option value="Thiếu FCI" {% if request.args.get('shift_type') == 'Thiếu FCI' %}selected{% endif %}>Thiếu FCI</option>
+                        <option value="Thiếu giờ vào" {% if request.args.get('shift_type') == 'Thiếu giờ vào' %}selected{% endif %}>Thiếu giờ vào</option>
+                        <option value="Thiếu giờ ra" {% if request.args.get('shift_type') == 'Thiếu giờ ra' %}selected{% endif %}>Thiếu giờ ra</option>
                     </select>
                 </div>
 

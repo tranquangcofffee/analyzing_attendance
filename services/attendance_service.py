@@ -21,7 +21,7 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
             if 5 <= fci.hour <= 10 or fci.hour < 22:
                 shift_type = 'Ca sáng thiếu log'
             else:
-                shift_type = 'Thiếu LCO'
+                shift_type = 'Thiếu giờ ra'
                 
             records.append({
                 'ID': emp_id,
@@ -52,7 +52,7 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                     continue
                 else:
                     # Thực sự là thiếu FCI
-                    shift_type = 'Thiếu FCI'
+                    shift_type = 'Thiếu giờ vào'
                     records.append({
                         'ID': emp_id,
                         'Họ tên': name,
@@ -531,14 +531,14 @@ def process_attendance(df, policy_df=None):
                     }
                     records.append(record)
 
-                elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
+                elif 4 <= fci.hour <= 14 and lco.hour < 23 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào'] 
                     morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
                     
                     if len(morning_fc_in) > 1 or len(morning_lc_out) > 1:
                         earliest_fci = morning_fc_in['datetime'].min()
-                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 22]['datetime'].max()
+                        latest_lco = morning_lc_out[morning_lc_out['datetime'].dt.hour < 23]['datetime'].max()
                         new_duration = (latest_lco - earliest_fci).total_seconds() / 3600 if pd.notna(latest_lco) else 0
                         
                         if new_duration >= TIME_FLAG:
@@ -548,6 +548,7 @@ def process_attendance(df, policy_df=None):
                             shift_type = 'Ca sáng'
                     else:
                         shift_type = 'Ca sáng'
+                        
                 elif 4 <= fci.hour <= 14 and lco.hour > 22:
                     shift_type = 'Ca sáng tăng ca'
 
