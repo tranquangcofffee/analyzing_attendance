@@ -187,6 +187,17 @@ def apply_policy_adjustments(df_result, policy_df):
 
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
+
+        # Xử lý đặc biệt cho MSNV 94 (bệnh hiểm nghèo)
+        if emp_id == '94':
+            df_result.at[idx, 'Nơi làm việc'] = 'Nhà Máy 2'
+            df_result.at[idx, 'Loại ca'] = 'Ca sáng'
+            df_result.at[idx, 'Đi trễ/Về sớm'] = "Đúng giờ"
+
+            df_result.at[idx, 'Ghi chú'] = (df_result.at[idx, 'Ghi chú'] or '') + ' (Không áp dụng chính sách, đi trễ/về sớm = 0)'
+            print(f"Skipping policy and setting late/early to 0 for MSNV 94 at index {idx}")
+            continue
+
         if emp_id not in late_early_summary:
             late_early_summary[emp_id] = {'total_late': 0, 'total_early': 0}
 
@@ -531,7 +542,10 @@ def process_attendance(df, policy_df=None):
                     }
                     records.append(record)
 
-                elif 4 <= fci.hour <= 14 and lco.hour < 23 and duration >= TIME_FLAG:
+                elif 4 <= fci.hour <= 14 and lco.hour >= 22 and duration >= TIME_FLAG:
+                    shift_type = 'Ca sáng tăng ca'  
+
+                elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào'] 
                     morning_lc_out = same_day_logs[same_day_logs['key'] == 'Ra']
@@ -547,16 +561,15 @@ def process_attendance(df, policy_df=None):
                             duration = new_duration
                             shift_type = 'Ca sáng'
                     else:
-                        shift_type = 'Ca sáng'
-                        
-                elif 4 <= fci.hour <= 14 and lco.hour > 22:
-                    shift_type = 'Ca sáng tăng ca'
+                        shift_type = 'Ca sáng'     
+
+                elif lco.hour > 10:
+                        shift_type = 'Ca đêm tăng ca'
 
                 elif 16 <= fci.hour <= 23 and duration >= TIME_FLAG:
                     if lco.date() > fci.date() or lco.hour <= 10:
                         shift_type = 'Ca đêm'
-                    elif lco.hour > 10:
-                        shift_type = 'Ca đêm tăng ca'
+                
 
             prev_day = date_report - timedelta(days=1)
             prev_log_info = "Không có"
