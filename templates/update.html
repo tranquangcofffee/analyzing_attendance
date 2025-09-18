@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Cập nhật hệ thống</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .update-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 32px 28px 24px 28px;
+        }
+        .update-container h1 {
+            color: #f9a77b;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .update-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 24px;
+        }
+        .update-list li {
+            background: #f9f9f9;
+            border-left: 4px solid #f9a77b;
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border-radius: 5px;
+            font-size: 1.08rem;
+        }
+        .btn-back {
+            display: inline-block;
+            background: #f9a77b;
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .btn-back:hover {
+            background: #f89b6d;
+        }
+    </style>
+</head>
+<body>
+    <div class="update-container">
+        <h1>Lịch sử cập nhật</h1>
+        <a href="{{ url_for('index') }}" class="btn-back">Quay lại trang chính</a>
+        <ul class="update-list">
+            <li>
+                <strong>24/07/2025:</strong>
+                <ul>
+                    <li>Allow cache and search.</li>
+                    <li>Filter for night shift.</li>
+                    <li>Allow upload excel and cache.</li>
+                    <li>Can detect missing log, but cannot detect exactly some case</li>
+                </ul>
+            </li>
+            <li>
+                <strong>26/07/2025:</strong>
+                <ul>
+                    <li>Update logic for get by key, if do not have any key (fci/lco), duplicate fci and return none of shift.</li>
+                    <li>Handle single log, if that day just have 1 log (fci, lco) return missing log depend on fci or lco.</li>
+                    <li>Update UI, Allow filter by shift more correctly</li>
+                    <li>Can choose column(s) for download excel</li>
+                </ul>
+            </li>
+            <li>
+                <strong>28/07/2025:</strong>
+                <ul>
+                    <li>Can log start/end time of date for each shift.</li>
+                    <li>Claim time_in, time_out from policy.</li>
+                    <li>Update UI, Allow filter by shift more correctly</li>
+                    <li>Can choose column(s) for download excel</li>
+                    <li>Can log timein, timeout, rename column name</li>
+                    <li>Fix search by date range</li>
+                    <li>Can download filter excel</li>
+                </ul>
+            </li>
+            <li>
+                <strong>29/07/2025:</strong>
+                <ul>
+                    <li>Calculate late arrival, early left.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>30/07/2025:</strong>
+                <ul>
+                    <li>Download by shift.</li>
+                    <li>Loose range for checking shift.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>31/07/2025:</strong>
+                <ul>
+                    <li>Minor update.</li>
+                    <li>Short by date.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>01/08/2025:</strong>
+                <ul>
+                    <li>Decreasing time_flag to 4 hours for merge log.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>04/08/2025:</strong>
+                <ul>
+                    <li>Add special event condition.</li>
+                    <li>Update logic for handling NaN, merge check missing log</li>
+                    <li>Get employees arrival late, go early and calculate.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>06/08/2025:</strong>
+                <ul>
+                    <li>Filter by id and date.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>14/08/2025:</strong>
+                <ul>
+                    <li>Update staticstic for get correct info.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>16/08/2025:</strong>
+                <ul>
+                    <li>Split through shift into day - night shift but keep through shift for checking.</li>
+                    <li>Optimizing calculate policy file.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>26/08/2025:</strong>
+                <ul>
+                    <li>Update calculate go early, arrival late for some employees.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>29/08/2025:</strong>
+                <ul>
+                    <li>Fix error that cannot get staticstic for employee early leave.</li>
+                    <li>Fix minor error.</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

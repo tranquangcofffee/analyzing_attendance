@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kiểm tra trạng thái cache</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: #f4f6fb;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .cache-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px 40px 24px 40px;
+            min-width: 320px;
+            text-align: center;
+        }
+        h1 {
+            color: #2d3a4b;
+            margin-bottom: 24px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+        li {
+            font-size: 1.1rem;
+            margin: 12px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .status-yes {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .status-no {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .back-btn {
+            display: inline-block;
+            background: #007bff;
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .back-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="cache-container">
+        <h1>Trạng thái cache</h1>
+        <ul>
+            <li>raw_data: <span class="{{ 'status-yes' if cache_status.raw_data else 'status-no' }}">{{ 'Có' if cache_status.raw_data else 'Không' }}</span></li>
+            <li>policy_data: <span class="{{ 'status-yes' if cache_status.policy_data else 'status-no' }}">{{ 'Có' if cache_status.policy_data else 'Không' }}</span></li>
+            <li>attendance_data: <span class="{{ 'status-yes' if cache_status.attendance_data else 'status-no' }}">{{ 'Có' if cache_status.attendance_data else 'Không' }}</span></li>
+        </ul>
+        <a href="{{ url_for('index') }}" class="back-btn">Quay lại trang chính</a>
+    </div>
+</body>
+</html>

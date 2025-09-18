@@ -2,7 +2,16 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>🔍 Kiểm tra công nhân sự</title>
+    <title>Kiểm tra công nhân sự</title>
+    <style>
+        table.data { border-collapse: collapse; width: 100%; }
+        table.data th, table.data td { border: 1px solid black; padding: 8px; text-align: left; }
+        table.data th { background-color: #f2f2f2; }
+        .pagination { margin: 20px 0; }
+        .pagination a { margin: 0 5px; text-decoration: none; }
+        .pagination a.disabled { color: grey; pointer-events: none; }
+        .pagination select { margin-left: 10px; }
+    </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 </head>
@@ -10,7 +19,11 @@
     <div class="logo-container">
         <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
     </div>
-    <h1>📋 Kiểm tra công theo ca</h1>
+    <div class="quick-links" style="display: flex; justify-content: center; gap: 18px; margin: 18px 0 0 0;">
+        <a href="{{ url_for('check_cache') }}" class="btn-quick-link" style="background: #f9a77b; color: #fff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; transition: background 0.2s;">Kiểm tra cache</a>
+        <!-- <a href="{{ url_for('update') }}" class="btn-quick-link" style="background: #f9a77b; color: #fff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; transition: background 0.2s;">Xem cập nhật</a> -->
+    </div>
+    <h1>Kiểm tra công theo ca</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
         <label>File chấm công (CSV):</label>
@@ -27,26 +40,68 @@
     <div class="result-box">
         <h2>Kết quả phân ca</h2>
 
-        <form method="get" style="margin-bottom: 20px;">
-            <input type="text" name="msnv" placeholder="MSNV" value="{{ request.args.get('msnv', '') }}">
-            <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
-            <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
-            <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+        <form method="get" class="filter-row" style="margin-bottom: 20px;">
+            <div class="filter-flex">
+                <input type="text" name="msnv" placeholder="MSNV" value="{{ request.args.get('msnv', '') }}">
+                <input type="text" name="name" placeholder="Họ tên" value="{{ request.args.get('name', '') }}">
+                <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+
+                <div class="select-wrapper">
+                    <label for="working_place">Nơi làm việc:</label>
+                    <select id="working_place" name="working_place[]" multiple>
+                        <option value="Nhà Máy 1" {% if "Nhà Máy 1" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 1</option>
+                        <option value="Nhà Máy 2" {% if "Nhà Máy 2" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 2</option>
+                        <option value="Nhà Máy 3" {% if "Nhà Máy 3" in request.args.getlist('working_place[]') %}selected{% endif %}>Nhà máy 3</option>
+                    </select>
+                </div>
+
                 <div class="select-wrapper">
                     <label for="shift_type">Loại ca:</label>
                     <select multiple name="shift_type[]" id="shift_type">
-                        <option value="">-- Tất cả ca --</option>
-                            <option value="Ca sáng" {% if request.args.get('shift_type') == 'Ca sáng' %}selected{% endif %}>Ca sáng</option>
-                            <option value="Ca đêm" {% if request.args.get('shift_type') == 'Ca đêm' %}selected{% endif %}>Ca đêm</option>
-                            <option value="Thông ca" {% if request.args.get('shift_type') == 'Thông ca' %}selected{% endif %}>Thông ca</option>
-                            <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
-                            <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
-                            <option value="Ca sáng thiếu log" {% if request.args.get('shift_type') == 'Ca sáng thiếu log' %}selected{% endif %}>Ca sáng thiếu log</option>
-                            <option value="Sự kiện đặc biệt" {% if request.args.get('shift_type') == 'Sự kiện đặc biệt' %}selected{% endif %}>Sự kiện đặc biệt</option>
+                        <option value="Ca sáng" {% if request.args.get('shift_type') == 'Ca sáng' %}selected{% endif %}>Ca sáng</option>
+                        <option value="Ca đêm" {% if request.args.get('shift_type') == 'Ca đêm' %}selected{% endif %}>Ca đêm</option>
+                        <option value="Thông ca" {% if request.args.get('shift_type') == 'Thông ca' %}selected{% endif %}>Thông ca</option>
+                        <option value="Không hợp lệ" {% if request.args.get('shift_type') == 'Không hợp lệ' %}selected{% endif %}>Không hợp lệ</option>
+                        <option value="Thiếu log" {% if request.args.get('shift_type') == 'Thiếu log' %}selected{% endif %}>Thiếu log</option>
+                        <option value="Ca sáng tăng ca" {% if request.args.get('shift_type') == 'Ca sáng tăng ca' %}selected{% endif %}>Ca sáng tăng ca</option>
+                        <option value="Thiếu giờ vào" {% if request.args.get('shift_type') == 'Thiếu giờ vào' %}selected{% endif %}>Thiếu giờ vào</option>
+                        <option value="Thiếu giờ ra" {% if request.args.get('shift_type') == 'Thiếu giờ ra' %}selected{% endif %}>Thiếu giờ ra</option>
                     </select>
                 </div>
-            <input type="submit" value="Lọc dữ liệu">
+
+                <input type="submit" value="Lọc dữ liệu" class="btn-filter">
+            </div>
         </form>
+
+        <div class="pagination">
+            <span>Trang {{ page }} / {{ total_pages }} (Tổng {{ total_records }} bản ghi)</span>
+            <a href="{{ url_for('index', page=page-1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]'), 'working_place[]': request.args.getlist('working_place[]')}) }}"
+            class="{% if page <= 1 or total_pages == 0 %}disabled{% endif %}">Trước</a>
+            <a href="{{ url_for('index', page=page+1, per_page=per_page, msnv=request.args.get('msnv', ''), name=request.args.get('name', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), **{'shift_type[]': request.args.getlist('shift_type[]'), 'working_place[]': request.args.getlist('working_place[]')}) }}"
+            class="{% if page >= total_pages or total_pages == 0 %}disabled{% endif %}">Sau</a>
+            <form id="perPageForm" method="GET" action="{{ url_for('index') }}">
+                <input type="hidden" name="msnv" value="{{ request.args.get('msnv', '') }}">
+                <input type="hidden" name="name" value="{{ request.args.get('name', '') }}">
+                <input type="hidden" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                <input type="hidden" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                {% for shift in request.args.getlist('shift_type[]') %}
+                    <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
+                {% endfor %}
+                <input type="hidden" name="page" value="1">
+                <label for="per_page">Số bản ghi mỗi trang:</label>
+                <select name="per_page" onchange="this.form.submit()">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                    <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+                </select>
+            </form>
+        </div>
 
         <div class="button-container">
             <!-- Nút download Excel -->
@@ -54,6 +109,9 @@
                 <input type="hidden" name="visible_columns" id="visible-columns">
                 {% for shift in request.args.getlist('shift_type[]') %}
                     <input type="hidden" name="shift_type[]" value="{{ shift }}">
+                {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
                 {% endfor %}
                 <input type="submit" value="Tải kết quả Excel">
             </form>
@@ -63,41 +121,83 @@
                 {% for shift in request.args.getlist('shift_type[]') %}
                     <input type="hidden" name="shift_type[]" value="{{ shift }}">
                 {% endfor %}
+                {% for place in request.args.getlist('working_place[]') %}
+                    <input type="hidden" name="working_place[]" value="{{ place }}">
+                {% endfor %}
                 <input type="hidden" name="employee_id" value="{{ request.args.get('msnv', '') }}">
                 <button type="submit" class="download-shift-id">Tải theo ca / ID</button>
             </form>
         </div>
 
-        <div style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
-            <label><input type="checkbox" class="toggle-col" data-col="0" checked> Mã số nhân viên (MSNV)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="1" checked> Họ tên</label>
-            <label><input type="checkbox" class="toggle-col" data-col="2" checked> Ngày chấm công</label>
-            <label><input type="checkbox" class="toggle-col" data-col="3" checked> Giờ vào</label>
-            <label><input type="checkbox" class="toggle-col" data-col="4" checked> Giờ ra</label>
-            <label><input type="checkbox" class="toggle-col" data-col="5" checked> First Check In</label>
-            <label><input type="checkbox" class="toggle-col" data-col="6" checked> Trạng thái FCI</label>
-            <label><input type="checkbox" class="toggle-col" data-col="7" checked> Last Check Out</label>
-            <label><input type="checkbox" class="toggle-col" data-col="8" checked> Trạng thái LCO</label>
-            <label><input type="checkbox" class="toggle-col" data-col="9" checked> Thời lượng (theo giờ)</label>
-            <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
-            <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
-            <label><input type="checkbox" class="toggle-col" data-col="12" checked> Log hôm trước</label>
-            <label><input type="checkbox" class="toggle-col" data-col="13" checked> Ghi chú</label>
-            <label><input type="checkbox" class="toggle-col" data-col="14" checked> Đi trễ/Về sớm</label>
-        </div>
-        
-        {% if late_employees or missing_employees %}
+        <!-- <h3>Bù log thiếu</h3>
+        <form method="post" action="/add_log">
+            <input type="text" name="id" placeholder="ID nhân viên" required>
+            <input type="datetime-local" name="datetime" required>
+            <select name="key">
+                <option value="Vào">Vào</option>
+                <option value="Ra">Ra</option>
+            </select>
+            <input type="submit" value="Thêm log bù">
+        </form>
+
+        {% if error %}
+            <div style="color: red; font-weight: bold; margin-bottom: 20px;">
+                {{ error }}
+            </div>
+        {% endif %} -->
+
+        <div class="top-flex-row">
+
+            {% if late_employees or early_employees or missing_employees %}
             <div class="employee-lists">
                 <h2>Danh sách nhân sự</h2>
                 {% if late_employees %}
-                <div>
-                    <strong>Nhân sự đi trễ:</strong>
-                    <ul>
-                        {% for name in late_employees %}
-                        <li>{{ name }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+                
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #007BFF; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('late-employees')">Nhân sự đi trễ</button>
+                        <div id="late-employees" style="display: none; margin-top: 10px;">
+                            <strong>Nhân sự đi trễ:</strong>
+                            <ul>
+                                {% for name in late_employees %}
+                                <li>{{ name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                
+                {% endif %}
+                {% if early_employees %}
+
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #28A745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('early-employees')">Nhân sự về sớm</button>
+                        <div id="early-employees" style="display: none; margin-top: 10px;">
+                            <strong>Nhân sự về sớm:</strong>
+                            <ul>
+                                {% for name in early_employees %}
+                                <li>{{ name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                
+                {% endif %}
+                {% if stats %}
+                
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                        <button style="background-color: #FFC107; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="toggleVisibility('stats-box')">Thống kê</button>
+                        <div id="stats-box" style="display: none; margin-top: 10px;">
+                            <strong>Thống kê</strong>
+                            <ul>
+                                <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
+                                <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
+                                <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
+                                <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
+                                <li><strong>Tổng thời gian đi trễ:</strong> {{ stats['total_late_duration'] }}</li>
+                                <li><strong>Tổng thời gian về sớm:</strong> {{ stats['total_early_duration'] }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                
                 {% endif %}
                 {% if missing_employees %}
                 <div>
@@ -110,19 +210,32 @@
                 </div>
                 {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if stats %}
-            <div class="stats-box">
-                <h2>Thống kê</h2>
-                <ul>
-                    <li><strong>Số lần đi trễ:</strong> {{ stats['total_late'] }}</li>
-                    <li><strong>Số lần về sớm:</strong> {{ stats['total_early'] }}</li>
-                    <li><strong>Số lần đúng giờ:</strong> {{ stats['total_on_time'] }}</li>
-                    <li><strong>Số lần quét thiếu:</strong> {{ stats['total_missing'] }}</li>
-                </ul>
+            <div class="column-toggle-box">
+                <div class="column-toggle-title">Ẩn/hiện cột</div>
+                <div class="column-toggle-list">
+                    <label><input type="checkbox" class="toggle-col" data-col="0" checked> MSNV</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="1" checked> Họ tên</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="2"> Ngày chấm công</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="3"> Giờ vào</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="4"> Giờ ra</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="5"> First Check In</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="6" checked> FCI (giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="7"> Last Check Out</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="8" checked> LCO (giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="9"> Thời lượng (theo giờ)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="10" checked> Thời lượng</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="11" checked> Loại ca</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="12"> Ghi chú</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="13" checked> Đi trễ/Về sớm</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="14"> Nơi làm việc</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="15" checked> Tổng đi trễ (phút)</label>
+                    <label><input type="checkbox" class="toggle-col" data-col="16" checked> Tổng về sớm (phút)</label>
+                </div>
             </div>
-        {% endif %}
+
+        </div>
         
         <div class="dataframe-container">
             <table class="dataframe">
@@ -153,7 +266,7 @@
     </div>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='toggle_columns.js') }}"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 
 </body>
 </html>

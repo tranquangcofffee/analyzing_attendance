@@ -259,4 +259,9 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# CSV, Excel and other data files
+*.csv
+*.xls
+*.xlsx
+
 # End of https://www.toptal.com/developers/gitignore/api/flask,python

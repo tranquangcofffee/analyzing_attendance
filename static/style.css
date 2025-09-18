@@ -1,3 +1,44 @@
+/* Filter row ngang */
+.filter-flex {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+    margin-bottom: 8px;
+}
+.filter-flex input[type="text"],
+.filter-flex input[type="date"] {
+    padding: 6px 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    min-width: 120px;
+}
+.filter-flex .select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.filter-flex select[multiple] {
+    min-width: 140px;
+    min-height: 38px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+.btn-filter {
+    padding: 8px 18px;
+    border-radius: 5px;
+    border: none;
+    background: #f9a77b;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-filter:hover {
+    background: #f89b6d;
+}
 body {
     font-family: 'Roboto', sans-serif;
     background: #f5f5dc; /* Ivory background color */
@@ -9,7 +50,6 @@ body {
 h1 {
     color: #f9a77b;
     text-align: center;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 form {
@@ -95,7 +135,7 @@ table.data {
 
 /* Scrollable container for checkboxes */
 .result-box div {
-    max-height: 5000px;
+    max-height: 850px;
     overflow-y: auto;
     padding: 10px;
     border: 1px solid #ddd;
@@ -192,4 +232,37 @@ select[multiple] {
 select[multiple] option:hover {
     background-color: #f0f0f0;
     color: #333;
+}
+
+.column-toggle-box {
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    max-width: 100%;
+}
+.column-toggle-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #2d3a4b;
+}
+.column-toggle-list {
+    display: flex;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px 16px;
+}
+.column-toggle-list label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1rem;
+    padding: 2px 0;
+}
+
+.top-flex-row {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
