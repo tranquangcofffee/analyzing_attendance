@@ -188,6 +188,13 @@ def apply_policy_adjustments(df_result, policy_df):
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
 
+        if 40 <= int(emp_id) <= 63 or 181 <= int(emp_id) <= 183:
+            df_result.at[idx, 'Ghi chú'] = "Nhân viên thử việc, không áp dụng chính sách"
+            df_result.at[idx, 'Đi trễ/Về sớm'] = "Tài xế"
+
+            print(f"Skipping policy for driver employee ID {emp_id} at index {idx}")
+            continue
+
         # Xử lý đặc biệt cho MSNV 94 (bệnh hiểm nghèo)
         if emp_id == '94':
             df_result.at[idx, 'Nơi làm việc'] = 'Nhà Máy 2'
@@ -404,6 +411,11 @@ def process_attendance(df, policy_df=None):
     records = []
     grouped = df.groupby(['id', 'full_name'])
 
+    # Xác định khoảng ngày trong dữ liệu
+    min_date = df['datetime'].dt.date.min()
+    max_date = df['datetime'].dt.date.max()
+    date_range = pd.date_range(min_date, max_date, freq='D')
+
     for (emp_id, name), group in grouped:
         group = group.sort_values(by='datetime').reset_index()
         group['date'] = group['datetime'].dt.date
@@ -507,6 +519,9 @@ def process_attendance(df, policy_df=None):
                             }
                             records.append(day_record)
 
+                if 17 <= fci.hour:
+                    shift_type = 'Thông ca thiếu log ra'
+
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
                     morning_fc_in = same_day_logs[same_day_logs['key'] == 'Vào']
@@ -600,6 +615,42 @@ def process_attendance(df, policy_df=None):
             })
 
             i = j if found_lco else i + 1
+
+        # Kiểm tra các ngày không có log
+        group_dates = set(group['date'])
+        for date in date_range:
+            if date.date() not in group_dates:
+                # Kiểm tra xem ngày trước đó có FCI của Thông ca mà không có LCO
+                prev_day = date.date() - timedelta(days=1)
+                prev_logs = group_by_date.get_group(prev_day) if prev_day in group_by_date.groups else None
+                prev_log_info = "Không có"
+                is_no_log_due_to_thongca = False
+
+                if prev_logs is not None:
+                    prev_entries = [
+                        f"{r['key']} @ {r['datetime'].strftime('%H:%M:%S')}"
+                        for _, r in prev_logs.iterrows()
+                    ]
+                    prev_log_info = "; ".join(prev_entries)
+                    # Kiểm tra nếu ngày trước có FCI của Thông ca mà không có LCO
+                    has_fci = any(r['key'] == 'Vào' and 17 <= r['datetime'].hour for _, r in prev_logs.iterrows())
+                    has_lco = any(r['key'] == 'Ra' for _, r in prev_logs.iterrows())
+                    if has_fci and not has_lco:
+                        is_no_log_due_to_thongca = True
+
+                records.append({
+                    'ID': str(emp_id),
+                    'Họ tên': name,
+                    'Ngày chấm công': date.strftime('%d/%m/%Y'),
+                    'FirstCheckIn': 'Không có',
+                    'LastCheckOut': 'Không có',
+                    'Giờ vào': 'Không có',
+                    'Giờ ra': 'Không có',
+                    'Thời lượng (h)': 0,
+                    'Thời lượng': format_duration(0),
+                    'Loại ca': 'Không có log (Thông ca hôm trước)' if is_no_log_due_to_thongca else 'Không có log',
+                    'Log hôm trước': prev_log_info
+                })
 
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
