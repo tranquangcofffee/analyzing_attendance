@@ -35,7 +35,8 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                 'LCO (giờ)': 'Không có',
                 'Thời lượng (h)': 0,
                 'Thời lượng': 0,
-                'Loại ca': shift_type
+                'Loại ca': shift_type,
+                'Ghi chú': 'Chỉ có log Vào, thiếu log Ra'
             })
 
         elif row['key'] == 'Ra':  
@@ -47,7 +48,7 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                 continue
             else:
                 # Không có FCI trước đó => check thêm khung giờ
-                if 0 <= row['datetime'].hour <= 8:
+                if 0 <= row['datetime'].hour <= 10:
                     # Có thể là LCO của ca đêm hôm trước => KHÔNG coi là thiếu FCI
                     continue
                 else:
@@ -65,7 +66,8 @@ def handle_single_logs(group, processed_indices, emp_id, name, records):
                         'LCO (giờ)': 'Không có',
                         'Thời lượng (h)': 0,
                         'Thời lượng': 0,
-                        'Loại ca': shift_type
+                        'Loại ca': shift_type,
+                        'Ghi chú': 'Chỉ có log Ra, thiếu log Vào'
                     })
 
 
@@ -188,12 +190,12 @@ def apply_policy_adjustments(df_result, policy_df):
     for idx, row in df_result.iterrows():
         emp_id = str(row['ID'])
 
-        if 40 <= int(emp_id) <= 63 or 181 <= int(emp_id) <= 183:
-            df_result.at[idx, 'Ghi chú'] = "Nhân viên thử việc, không áp dụng chính sách"
-            df_result.at[idx, 'Đi trễ/Về sớm'] = "Tài xế"
+        # if 40 <= int(emp_id) <= 63 or 181 <= int(emp_id) <= 183:
+        #     df_result.at[idx, 'Ghi chú'] = "Nhân viên thử việc, không áp dụng chính sách"
+        #     df_result.at[idx, 'Đi trễ/Về sớm'] = "Tài xế"
 
-            print(f"Skipping policy for driver employee ID {emp_id} at index {idx}")
-            continue
+        #     print(f"Skipping policy for driver employee ID {emp_id} at index {idx}")
+        #     continue
 
         # Xử lý đặc biệt cho MSNV 94 (bệnh hiểm nghèo)
         if emp_id == '94':
@@ -460,7 +462,7 @@ def process_attendance(df, policy_df=None):
             if log_count <= 1:
                 shift_type = 'Thiếu log'
             else:
-                if 17 <= fci.hour and duration >= 17:
+                if 16 <= fci.hour and duration >= 17:
                     # Dòng 1: Giữ nguyên bản ghi với shift_type = 'Thông ca'
                     record = {
                         'ID': str(emp_id),
@@ -518,9 +520,6 @@ def process_attendance(df, policy_df=None):
                                 'Log hôm trước': "Không có"
                             }
                             records.append(day_record)
-
-                if 17 <= fci.hour:
-                    shift_type = 'Thông ca thiếu log ra'
 
                 elif 4 <= fci.hour <= 14 and lco.hour < 22 and duration >= TIME_FLAG:
                     same_day_logs = group[group['date'] == fci.date()]
@@ -638,19 +637,19 @@ def process_attendance(df, policy_df=None):
                     if has_fci and not has_lco:
                         is_no_log_due_to_thongca = True
 
-                records.append({
-                    'ID': str(emp_id),
-                    'Họ tên': name,
-                    'Ngày chấm công': date.strftime('%d/%m/%Y'),
-                    'FirstCheckIn': 'Không có',
-                    'LastCheckOut': 'Không có',
-                    'Giờ vào': 'Không có',
-                    'Giờ ra': 'Không có',
-                    'Thời lượng (h)': 0,
-                    'Thời lượng': format_duration(0),
-                    'Loại ca': 'Không có log (Thông ca hôm trước)' if is_no_log_due_to_thongca else 'Không có log',
-                    'Log hôm trước': prev_log_info
-                })
+                # records.append({
+                #     'ID': str(emp_id),
+                #     'Họ tên': name,
+                #     'Ngày chấm công': date.strftime('%d/%m/%Y'),
+                #     'FirstCheckIn': 'Không có',
+                #     'LastCheckOut': 'Không có',
+                #     'Giờ vào': 'Không có',
+                #     'Giờ ra': 'Không có',
+                #     'Thời lượng (h)': 0,
+                #     'Thời lượng': format_duration(0),
+                #     'Loại ca': 'Không có log (Thông ca hôm trước)' if is_no_log_due_to_thongca else 'Không có log',
+                #     'Log hôm trước': prev_log_info
+                # })
 
         handle_single_logs(group, processed_indices, emp_id, name, records)
 
