@@ -1,5 +1,5 @@
 # 1. Chọn base image có sẵn Python
-FROM python:3.11-slim
+FROM python:3.11-alpine
 
 # 2. Set working directory trong container
 WORKDIR /app
@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 5000
 
 # 7. Command để chạy Flask app
-CMD ["python", "app.py"]
+ENTRYPOINT ["python", "app.py"]
