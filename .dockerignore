@@ -1,0 +1,14 @@
+# Ignore local data and caches that should not be copied into the image
+uploads/
+downloads/
+__pycache__/
+*.pyc
+*.pyo
+.git
+.venv
+env/
+venv/
+Dockerfile
+dockerfile
+*.sqlite3
+*.db
